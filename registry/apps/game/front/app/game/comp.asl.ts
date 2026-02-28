@@ -59,11 +59,12 @@ GameComp.prototype = {
         let prevTime: number | undefined = undefined;
         const loop = () => {
             const tickStart = Date.now();
-            if (tickStart > tickEnd + timeLeft) {
 
                 // Fixed ticks
-                this.game.tick(this.game.fixedDeltaTime);
-                this.game.draw(this.game.fixedDeltaTime);
+            while (this.game.lastFrame + this.game.totalFrameTimeMs < Date.now()){
+                    this.game.tick(this.game.fixedDeltaTime);
+                    this.game.lastFrame += this.game.totalFrameTimeMs;
+                    this.game.draw(this.game.fixedDeltaTime);
 
                 tickEnd = Date.now();
                 const elapsed = (tickEnd - tickStart) / 1000;

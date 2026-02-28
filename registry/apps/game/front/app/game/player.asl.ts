@@ -20,6 +20,9 @@ export class Player {
     private dodgeSpeed = 150;
     private dodgeCurve = Bezier(0.65, 0.1, 0.25, 1.0);
 
+    private quackCooldown = 0.00;
+    private quackCooldownTimer = 0;
+
     public position: Vec2 = Vec2.zero();
 
     private velocity: Vec2 = Vec2.zero();
@@ -53,6 +56,7 @@ export class Player {
     public tick(dt: number, input: InputState) {
         this.movement(dt, input);
         this.shoot(dt, input);
+        this.quack(dt, input);
 
         // Integrate position
         this.integrate(dt);
@@ -120,6 +124,23 @@ export class Player {
         Vec2.set(5, 20, projectile.collider.size);
 
         this.state.playerProjectiles.buffer.push(projectile);
+        const audio = new Audio("/game/assets/audio/shoot.wav");
+        audio.play()
+    }
+
+    private quack(dt: number, input: InputState){
+        if (this.quackCooldownTimer > 0){
+            this.quackCooldownTimer -= dt;
+            return;
+        }
+
+        if (!input.quack)
+            return;
+
+        this.quackCooldownTimer = this.quackCooldown;
+
+        const audio = new Audio("/game/assets/audio/quack.wav");
+        audio.play()
     }
 
     private integrate(dt: number) {

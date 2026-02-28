@@ -4,6 +4,7 @@ export interface InputState {
     movement: Vec2;
     attack: boolean;
     dodge: boolean;
+    quack: boolean;
 }
 
 export class InputProvider {

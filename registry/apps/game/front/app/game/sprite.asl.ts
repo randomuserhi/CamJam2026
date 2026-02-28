@@ -13,9 +13,9 @@ export function loadImage(path: string): Promise<HTMLImageElement> {
 }
 
 export const sprites = {
-    duck: await loadImage("/game/assets/duck.png"),
-    lobby: await loadImage("/game/assets/lobby.png"),
-    bridge: await loadImage("/game/assets/bridge.png"),
-    farm: await loadImage("/game/assets/farm.png"),
-    castle: await loadImage("/game/assets/castle.png"),
+    duck: await loadImage("/game/assets/images/duck.png"),
+    lobby: await loadImage("/game/assets/images/lobby.png"),
+    bridge: await loadImage("/game/assets/images/bridge.png"),
+    farm: await loadImage("/game/assets/images/farm.png"),
+    castle: await loadImage("/game/assets/images/castle.png"),
 };

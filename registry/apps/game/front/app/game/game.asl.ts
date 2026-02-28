@@ -46,6 +46,7 @@ export class Game {
 
     public drawColliders: boolean = true;
     public tickIdx = 0;
+    public lastFrame = Date.now();
 
     private targetCameraPosition = Vec2.zero();
 
@@ -90,7 +91,7 @@ export class Game {
     }
 
     public tick(dt: number) {
-        if (this.worldTimer > 10) {
+        if (this.worldTimer > 60) {
             this.levelEnd();
             return;
         }

@@ -2,13 +2,16 @@ import { Vec2 } from "../math/vector.asl";
 import { InputProvider, InputState } from "./inputProvider.asl";
 
 export class ControllerInput extends InputProvider {
+    private lastQuackInput = false;
+
     override getInput(tickIdx: number): InputState {
         const gamepads = navigator.getGamepads(); // returns an array of connected gamepads
 
         const state: InputState = {
             movement: Vec2.zero(),
             attack: false,
-            dodge: false
+            dodge: false,
+            quack: false
         };
 
         let gp = undefined;
@@ -29,6 +32,9 @@ export class ControllerInput extends InputProvider {
 
         state.attack = gp.buttons[3].pressed;
         state.dodge = gp.buttons[2].pressed;
+        if (!this.lastQuackInput && gp.buttons[0].pressed)
+            state.quack = true;
+        this.lastQuackInput = gp.buttons[0].pressed;
 
         /*for (const gp of gamepads) {
             if (!gp) continue;
