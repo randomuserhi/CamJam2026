@@ -1,6 +1,18 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+}
+
+val secrets = Properties()
+val secretsFile = rootProject.file("secrets.properties")
+
+if (secretsFile.exists()) {
+    secretsFile.inputStream().use { secrets.load(it) }
+} else {
+    logger.warn("WARNING: 'secrets.properties' not found at ${secretsFile.absolutePath}")
 }
 
 android {
@@ -19,6 +31,14 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        val nfcKey = secrets.getProperty("SCANNER_NFC_KEY")
+        if (nfcKey == null) {
+            logger.warn("WARNING: 'SCANNER_NFC_KEY' is missing from secrets.properties. NFC features will not work.")
+            buildConfigField("String", "SCANNER_NFC_KEY", "\"000000000000\"")
+        } else {
+            buildConfigField("String", "SCANNER_NFC_KEY", "\"$nfcKey\"")
+        }
     }
 
     buildTypes {
@@ -36,6 +56,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
