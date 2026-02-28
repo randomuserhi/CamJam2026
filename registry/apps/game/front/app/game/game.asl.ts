@@ -32,7 +32,7 @@ export class Game {
         const ctx = this.renderer.ctx;
         ctx.clearRect(0, 0, this.camera.size.x, this.camera.size.y);
 
-        ctx.fillStyle = "rgb(255, 0, 0)";
+        ctx.fillStyle = "rgb(0, 0, 0)";
         ctx.fillRect(-80, -45, 160, 90);
 
         this.camera.end();
