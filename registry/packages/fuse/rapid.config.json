@@ -1,0 +1,14 @@
+{
+    "flex": {
+        "types": {
+            "/fuse.mjs": [
+                "./fuse/fuse.d.ts"
+            ]
+        },
+        "paths": {
+            "/*": [
+                "./fuse/*"
+            ]
+        }
+    }
+}

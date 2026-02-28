@@ -1,0 +1,1413 @@
+/// html.ts 
+///
+/// @randomuserhi
+
+import { isSignal, SignalBase } from "rhu/signal.asl";
+import type { ClassName } from "./style.asl";
+
+/** Utility type that makes type `T` mutable, even if its marked as readonly. */
+export type Mutable<T> = { 
+    -readonly [key in keyof T]: T[key]
+};
+
+/**
+ * For a given function, creates a bound function that has the same body as the original function.
+ * The this object of the bound function is associated with the specified object, and has the specified initial parameters.
+ * 
+ * This is used over `Function.prototype.bind` as it has arrow function semantics which optimize better.
+ * It is also used over an inline arrow function as it doesnt capture unnecessary variables due to scoping.
+ * 
+ * @param func The function to bind
+ * @param args Arguments to bind to the parameters of the function.
+ */
+function arrowBind<A extends any[], B extends any[], R>(func: (...args: [...A, ...B]) => R, ...args: A): (...args: B) => R {
+    return (...remaining: B) => func(...args, ...remaining);
+}
+
+// Internal helper functions for runtime type information.
+const isMap: <K = any, V = any>(object: any) => object is Map<K, V> = Object.prototype.isPrototypeOf.bind(Map.prototype) as any;
+const isArray: <T = any>(object: any) => object is Array<T> = Object.prototype.isPrototypeOf.bind(Array.prototype) as any;
+function isTemplateStringsArray(object: any): object is TemplateStringsArray {
+    return isArray(object) && Object.prototype.hasOwnProperty.call(object, "raw");
+}
+export const isNode: (object: any) => object is Node = Object.prototype.isPrototypeOf.bind(Node.prototype) as any;
+export const isElement:(object: any) => object is Element = Object.prototype.isPrototypeOf.bind(Element.prototype) as any;
+
+/** Symbol for accessing DOM interface on a Fragment. */
+export const DOM = Symbol("RHU_HTML.[[DOM]]");
+
+/** 
+ * Maps nodes / components to their metadata. 
+ * 
+ * Used to prevent mutating `Node` objects which could lead to undefined behaviour.
+ */
+const metadata = new WeakMap<Node | RHU.Component, RHU_METADATA>();
+
+/** Keeps track of existing fragment markers. Refer to RHU_FRAGMENT for more details. */
+const markers = new WeakMap<Comment, RHU.Component>();
+
+/** Represents valid children types of components. */
+type RHU_CHILDREN = NodeListOf<ChildNode>;
+
+/** 
+ * Metadata that is attached to a node / component.
+ * 
+ * Used for tracking which RHU_FRAGMENT has ownership over a given node / component.
+ */
+class RHU_METADATA<T extends Record<PropertyKey, any> = Record<PropertyKey, any>> {
+    public owner: RHU.Component<T> | undefined;
+    
+    constructor(owner: RHU.Component<T> | undefined = undefined) {
+        this.owner = owner;
+    }
+}
+
+/**
+ * Node of the linked list used within a RHU_FRAGMENT that represents
+ * the elements / components within said fragment.
+ */
+class RHU_FRAGMENT_NODE {
+    node: RHU.Component | Node = undefined!;
+    next?: RHU_FRAGMENT_NODE;
+    prev?: RHU_FRAGMENT_NODE;
+}
+
+/** 
+ * Collection of elements or components.
+ * 
+ * Can be thought of as <></> from React.
+ */
+class RHU_FRAGMENT<T extends Record<PropertyKey, any> = Record<PropertyKey, any>> {
+    /** Internal collection of nodes / components that make up this fragment. */
+    private nodes = new Map<RHU.Component | Node, RHU_FRAGMENT_NODE>(); 
+
+    /** Access to component the fragment belongs to. */
+    public readonly [DOM]: RHU.Component<T>;
+
+    /** 
+     * The node used as the fragment marker that always appears at the end of the fragment. 
+     * This is typically a comment.
+     *
+     * This is to control garbage collection when referencing components.
+     * If some code needs to run without holding a strong reference to the elements / components,
+     * it will pass all references through this comment.
+     *
+     * This way, if the component is GC'd but the comment remains on DOM, everything still
+     * works and vice versa (since the comment holds a reference to the html object).
+     *                     
+     * But if both the comment and the component is GC'd then the reference can be cleared and detected
+     * through the WeakRef to this comment node.
+     *
+     * The comment node also serves as a positional point so the code knows where to append / replace
+     * nodes to.
+     */
+    private readonly marker: Node;
+
+    /** The first node in the fragment. */
+    private _first: RHU_FRAGMENT_NODE;
+    
+    /** 
+     * The last node in the fragment
+     * 
+     * This is always the comment marker, and thus can be readonly.
+     */
+    private readonly _last: RHU_FRAGMENT_NODE;
+
+    /** The size of the fragment */
+    private _length: number = 0;
+
+    constructor(owner: RHU.Component<T>, ...nodes: (RHU.Component | Node)[]) {
+        // Assign owning component
+        this[DOM] = owner;
+
+        // Create marker.
+        this.marker = document.createComment(" << rhu-node >> ");
+
+        // Register this fragment's marker
+        markers.set(this.marker as Comment, owner);
+
+        // Assign first and last node
+        this._first = this._last = { node: this.marker };
+
+        // Append provided nodes
+        this.append(...nodes);
+    }
+
+    /** 
+     * Mark the provided node / component as not being owned by any fragment, clearing it of its metadata  
+     * and removing the node / component from the fragment.
+     */
+    static unbind(node: RHU.Component | Node) {
+        const frag = metadata.get(node);
+        if (frag?.owner !== undefined) {
+            frag.owner[DOM].remove(node);
+        }
+    }
+
+    /** Append the nodes / components to this fragment. */
+    public append(...nodes: (RHU.Component | Node)[]) {
+        for (const node of nodes) {
+            // Skip self
+            if (node === this[DOM]) continue;
+
+            // Skip if it is a fragment marker
+            if (markers.has(node as any)) continue;
+            
+            // Create metadata for the node.
+            if (!metadata.has(node)) {
+                metadata.set(node, new RHU_METADATA());
+            }
+            const meta = metadata.get(node)!;
+
+            // If it previously belonged to another fragment,
+            // remove the node from the previous owner.
+            if (meta.owner !== undefined) {
+                meta.owner[DOM].remove(node);
+            }
+
+            // Set ownership
+            meta.owner = this[DOM];
+
+            // Add node to the fragment, appending to the end of the linked list.
+            const linkage: RHU_FRAGMENT_NODE = { 
+                node,
+                prev: this._last.prev,
+                next: this._last
+            };
+            this._last.prev = linkage;
+            if (linkage.prev !== undefined) linkage.prev.next = linkage;
+            else this._first = linkage;
+
+            // Add node to collection.
+            this.nodes.set(node, linkage);
+
+            // If the fragment is on the DOM, append the node to the DOM.
+            if (this.marker.parentNode !== null) {
+                if (isHTML(node)) {
+                    // If it is a RHU.Component we need to append the elements that make up the component.
+                    for (const n of node) {
+                        this.marker.parentNode.insertBefore(n, this.marker);
+                    }
+                } else {
+                    this.marker.parentNode.insertBefore(node, this.marker);
+                }
+            }
+
+            // Update the length
+            ++this._length;
+        }
+    }
+
+    /** Remove nodes / components from this fragment */
+    public remove(...nodes: (RHU.Component | Node)[]) {
+        for (const node of nodes) {
+            // Skip self
+            if (node === this[DOM]) continue;
+
+            // Skip if it is a fragment marker
+            if (markers.has(node as any)) continue;
+
+            // Get metadata for the node.
+            const frag = metadata.get(node);
+            if (frag?.owner === this[DOM]) {
+                // If this fragment owns the node, remove ownership.
+                frag.owner = undefined;
+                metadata.delete(node);
+            }
+            
+            // Try and get the node in the fragment.
+            const el = this.nodes.get(node);
+            if (el === undefined) continue; // Skip if we cannot find it.
+
+            // Update the linked list to remove the node.
+            if (el.prev !== undefined) el.prev.next = el.next;
+            else this._first = el.next!;
+            if (el.next !== undefined) el.next.prev = el.prev;
+
+            // Delete node from collection.
+            this.nodes.delete(node);
+
+            // If the fragment is on the DOM, remove the node from the dom.
+            const parentNode = this.marker.parentNode;
+            if (parentNode !== null) {
+                if (isHTML(node)) {
+                    // If it is a RHU.Component we need to remove the elements that make up the component.
+                    for (const n of node) {
+                        if (n.parentNode === parentNode) parentNode.removeChild(n);
+                    }
+                } else {
+                    if (node.parentNode === parentNode) {
+                        parentNode.removeChild(node);
+                    }
+                }
+            }
+
+            // Update the length.
+            --this._length;
+        }
+    }
+
+    /** Insert `child` node before the target `node` */
+    public insertBefore(node: (RHU.Component | Node), child?: (RHU.Component | Node)) {
+        // Skip self
+        if (node === this[DOM]) return;
+
+        // Skip if it is a fragment marker
+        if (markers.has(node as any)) return;
+        
+        // Create metadata for the node.
+        if (!metadata.has(node)) {
+            metadata.set(node, new RHU_METADATA());
+        }
+        const meta = metadata.get(node)!;
+
+        // remove from old collection
+        if (meta.owner !== undefined) {
+            meta.owner[DOM].remove(node);
+        }
+
+        // find target
+        let target = child === undefined ? undefined : this.nodes.get(child);
+        if (target === undefined) {
+            target = this._last;
+        }
+
+        // Add node to the fragment, appending to the end of the linked list.
+        meta.owner = this[DOM];
+        const linkage: RHU_FRAGMENT_NODE = { 
+            node,
+            prev: target.prev,
+            next: target
+        };
+        target.prev = linkage;
+        if (linkage.prev !== undefined) linkage.prev.next = linkage;
+        else this._first = linkage;
+
+        // Add node to collection.
+        this.nodes.set(node, linkage);
+
+        // If the fragment is on the DOM, append the node to the DOM.
+        if (this.marker.parentNode !== null) {
+            let appendNode = isHTML(target.node) ? target.node[DOM].__firstNode : target.node;
+            if (appendNode.parentNode !== this.marker.parentNode) {
+                appendNode = this.marker;
+            }
+
+            if (isHTML(node)) {
+                for (const n of node) {
+                    this.marker.parentNode.insertBefore(n, appendNode);
+                }
+            } else {
+                this.marker.parentNode.insertBefore(node, appendNode);
+            }
+        }
+
+        ++this._length;
+    }
+
+    /** Replace the fragment with a node / component in the DOM. */
+    public replaceWith(...nodes: (RHU.Component | Node)[]) {
+        replaceWith(this[DOM], ...nodes);
+    }
+
+    /** Get the first node / component in the fragment, not including the fragment marker. */
+    get first() { 
+        const node = this._first.node;
+        if (node === this.marker) return undefined;
+        return node;
+    }
+
+    /** Gets the actual first DOM Node, not including the fragment marker. */
+    get firstNode(): Node | undefined { 
+        const node = this.first;
+        if (isHTML(node)) {
+            return node[DOM].firstNode;
+        } else {
+            return node;
+        }
+    }
+    
+    /** Get the last node / component in the fragment, not including the fragment marker. */
+    get last() { 
+        return this._last.prev?.node;
+    }
+
+    /** Gets the actual last DOM Node, not including the fragment marker. */
+    get lastNode(): Node | undefined {
+        const node = this.last;
+        if (isHTML(node)) {
+            return node[DOM].lastNode;
+        } else {
+            return node;
+        }
+    }
+
+    /** Get the first node / component in the fragment, including the fragment marker. */
+    get __first() { 
+        const node = this._first.node;
+        return node;
+    }
+
+    /** Gets the actual first DOM Node, including the fragment marker. */
+    get __firstNode(): Node { 
+        const node = this.__first;
+        if (isHTML(node)) {
+            return node[DOM].__firstNode;
+        } else {
+            return node;
+        }
+    }
+    
+    /** Get the last node / component in the fragment, including the fragment marker. */
+    get __last() { 
+        return this._last.node;
+    }
+
+    /** Gets the actual last DOM Node, including the fragment marker. */
+    get __lastNode(): Node {
+        const node = this.__last;
+        if (isHTML(node)) {
+            return node[DOM].__lastNode;
+        } else {
+            return node;
+        }
+    }
+
+    /** Get the parent of the fragment, when attached to DOM. */
+    get parent() { return this.marker.parentNode; }
+
+    /** Size of the fragment */
+    get length() { return this._length; }
+
+    /**
+     * Get all elements / components within the fragment.
+     * Includes the marker node.
+     */
+    public *[Symbol.iterator]() {
+        let current: RHU_FRAGMENT_NODE | undefined = this._first;
+        while (current !== undefined) {
+            yield current.node;
+            current = current.next;
+        }
+    }
+
+    /**
+     * Get all elements of the fragment, decomponsing components into their elements.
+     * Include the marker node.
+     */
+    public *childNodes() {
+        for (const node of this) {
+            if (isHTML(node)) {
+                yield* node;
+            } else {
+                yield node;
+            }
+        }
+    }
+}
+
+/** Helper function that replaces the target node / component on the DOM tree. */
+function replaceWith(target: Node | RHU.Component, ...nodes: (Node | RHU.Component)[]) {
+    const _isHTML = isHTML(target);
+
+    const parent = _isHTML ? target[DOM].parent : target.parentNode;
+    if (parent === null) return;
+
+    const ref = _isHTML ? target[DOM].__firstNode : target;
+    for (const node of nodes) {
+        RHU_FRAGMENT.unbind(node);
+
+        if (isHTML(node)) {
+            for (const n of node) {
+                parent.insertBefore(n, ref);
+            }
+        } else {
+            parent.insertBefore(node, ref);
+        }
+    }
+    
+    remove(parent, target);
+}
+
+/** Helper function that removes nodes / components from the target. */
+function remove(target: Node | RHU.Component, ...nodes: (Node | RHU.Component)[]) {
+    if (isHTML(target)) {
+        // If the target is a component, we can use the fragments method.
+        target[DOM].remove(...nodes);
+    } else {
+        // Otherwise remove each individual node.
+        for (const node of nodes) {
+            if (isHTML(node)) {
+                if (node[DOM].parent === target) {
+                    // In case the component is owned by a fragment, we need to unbind it
+                    // now that it is removed from the DOM tree (and thus the fragment as well).
+                    RHU_FRAGMENT.unbind(node);
+
+                    // Remove the nodes that make up the fragment
+                    for (const n of node) {
+                        if (n.parentNode === target) target.removeChild(n);
+                    }
+                }
+            } else {
+                if (node.parentNode === target) {
+                    // In case the node is owned by a fragment, we need to unbind it
+                    // now that it is removed from the DOM tree (and thus the fragment as well).
+                    RHU_FRAGMENT.unbind(node);
+
+                    // Remove the node
+                    target.removeChild(node);
+                }
+            }
+        }
+    }
+}
+
+/** 
+ * A component is a custom element made up from other components / elements.
+ */ 
+class RHU_COMPONENT<T extends Record<PropertyKey, any> = Record<PropertyKey, any>> extends RHU_FRAGMENT<T> {
+    private binds: PropertyKey[] = [];
+
+    /** Weak ref to the component's fragment marker. */
+    public readonly ref: { deref(): RHU.Component<T> | undefined, hasref(): boolean } = undefined!;    
+
+    public close: RHU_CLOSURE = RHU_CLOSURE.instance;
+
+    private onChildren?: (children: RHU_CHILDREN) => void;
+
+    /** Set the callback which occures when children are added to the component. */ 
+    public children(cb?: (children: RHU_CHILDREN) => void) {
+        this.onChildren = cb;
+        return this;
+    }
+
+    private boxed: boolean = false;
+    
+    /** If true, boxes the bindings such that they are not inheritted directly when used. */
+    public box(boxed: boolean = true) {
+        this.boxed = boxed;
+        return this;
+    }
+
+    static is: (object: any) => object is RHU_COMPONENT = Object.prototype.isPrototypeOf.bind(RHU_COMPONENT.prototype) as any;
+}
+
+/** 
+ * A marker is just a html comment that marks a position in the DOM tree. 
+ */
+class RHU_MARKER {
+    readonly __RHU_MARKER__: never = undefined!; // Only exists for the type system.
+    
+    static is: (object: any) => object is RHU_MARKER = Object.prototype.isPrototypeOf.bind(RHU_MARKER.prototype) as any;
+}
+
+/** 
+ * Wrapper around any object that needs to be treated like a HTML DOM node.
+ * 
+ * The wrapper allows providing HTML properties to the object without extending the object to support them.
+ */
+class RHU_NODE<T = any> {
+    public readonly node: T;
+
+    private name?: PropertyKey;
+    private isOpen: boolean = false;
+
+    /** Bind the node to a given property key. */
+    public bind(name?: PropertyKey) {
+        this.name = name;
+        return this;
+    }
+
+    /**
+     * Generate the opening tag for the given node. 
+     * 
+     * The opening tag must be closed by a RHU_CLOSURE.
+     */
+    public open() {
+        this.isOpen = true;
+        return this;
+    }
+    
+    private boxed?: boolean;
+    /**
+     * If true, the bindings of the component are boxed behind a single property.
+     * Otherwise, the bindings are directly inheritted.
+     *
+     * Only valid if wrapping a `RHU.Component`.
+     */
+    public box(boxed: boolean = true) {
+        this.boxed = boxed;
+        return this;
+    }
+
+    /**
+     * Executes a transformation onto this node immediately. Allows for applying changes to a given
+     * component inline.
+     */
+    public transform(transform: (node: T) => void) {
+        transform(this.node);
+        return this;
+    }
+
+    constructor(node: T) {
+        this.node = node;
+    }
+
+    static is: (object: any) => object is RHU_NODE = Object.prototype.isPrototypeOf.bind(RHU_NODE.prototype) as any;
+}
+
+/** 
+ * Implementation the closing tag of an element. 
+ * 
+ * Used with opening tags to mark the end.
+ */ 
+class RHU_CLOSURE {
+    readonly __RHU_CLOSURE__: never = undefined!; // Only exists for the type system.
+
+    static instance = new RHU_CLOSURE();
+    static is: (object: any) => object is RHU_CLOSURE = Object.prototype.isPrototypeOf.bind(RHU_CLOSURE.prototype) as any;
+}
+
+/** 
+ * Prototype used to determine if an object is a RHU.Component
+ */ 
+export const COMPONENT_PROTOTYPE = {
+    [Symbol.iterator]: function*() {
+        for (const node of (this as unknown as RHU.Component)[DOM]) {
+            if (isHTML(node)) {
+                yield* node;
+            } else {
+                yield node;
+            }
+        }
+    },
+    [Symbol.toStringTag]: "RHU.Component"
+};
+
+export namespace RHU {
+    export type Marker = RHU_MARKER;
+
+    export type Node<T = any> = RHU_NODE<T>;
+
+    export type Component<T extends Record<PropertyKey, any> = Record<PropertyKey, any>> = T & { readonly [DOM]: RHU_COMPONENT<T>; [Symbol.iterator]: () => IterableIterator<globalThis.Node> }; 
+    
+    /** Helper that gets the component type from a RHU.Component */
+    export type ComponentType<T extends RHU.Component> = T extends RHU.Component<infer C> ? C : never;
+
+    /**
+     * RHU Functional Component.
+     * 
+     * Similar to React Functional component, but you can assign a prototype
+     */
+    export type FC<T extends Record<PropertyKey, any> = Record<PropertyKey, any>> = (...args: any[]) => Component<T>;
+
+    /**
+     * RHU Wrapped Component.
+     * 
+     * A version of RHU Functional Component that is optimized to utilize an object prototype
+     */
+    export interface WC<Args extends any[], T extends Record<PropertyKey, any>, _T extends Record<PropertyKey, any>> {
+        (...args: Args): Component<T>;
+        prototype: Partial<{ [K in keyof _T]: _T[K] }> & ThisType<_T>;
+    }
+}
+
+export type html<T extends RHU.FC | Record<PropertyKey, any> = Record<PropertyKey, any>> = T extends RHU.FC ? ReturnType<T> extends RHU.Component ? ReturnType<T> : never : RHU.Component<T>;
+
+/** Returns true if the node is a RHU.Component */
+export const isHTML = <T extends Record<PropertyKey, any> = Record<PropertyKey, any>>(object: any): object is RHU.Component<T> => {
+    if (object === undefined) return false;
+    return RHU_COMPONENT.is(object[DOM]);
+};
+
+// Types used for string template interpolation.
+type First = TemplateStringsArray;
+type Single = Node | string | RHU.Component | RHU_NODE | RHU_CLOSURE | RHU_MARKER | SignalBase<any> | ClassName;
+type Slot = Node | RHU.Component | RHU_NODE | SignalBase<any> | RHU_MARKER
+type Interp = Single | (Single[]);
+
+export namespace RHU {
+
+    export interface HTML {
+        /** 
+         * @returns Internal DOM component state from a `RHU.Component`. 
+         * The internal DOM component state controls the whether the component is boxed, or how it reacts to children.
+         */ 
+        <T extends Record<PropertyKey, any> = Record<PropertyKey, any>>(html: RHU.Component<T>): RHU_COMPONENT<T>;
+
+        /** @returns `RHU.Component` */ 
+        <T extends Record<PropertyKey, any> = Record<PropertyKey, any>>(first: First, ...interpolations: Interp[]): RHU.Component<T>;
+
+        /**
+         * Internally caches the prototypes in a WeakMap so the same factory object is used per proto.
+         * @returns A factory that generates RHU.Components with the given prototype
+         */
+        <P extends object>(prototype: P): (<T extends Record<PropertyKey, any> & P = Record<PropertyKey, any> & P>(first: First, ...interpolations: Interp[]) => RHU.Component<T>);
+
+        /** 
+         * Creates a wrapped component. The same as an functional component but has better type inference for object prototypes.
+         */
+        wc<F extends FC>(func: F): WC<Parameters<F>, ComponentType<ReturnType<F>>, ComponentType<ReturnType<F>>> 
+
+        /** 
+         * Creates a wrapped component. The same as an functional component but has better type inference for object prototypes.
+         * 
+         * This variant allows specifying a public interface separate to the internal implementation interface.
+         */
+        wc<T extends Record<PropertyKey, any>>(): <F extends FC>(func: F) => WC<Parameters<F>, T, ComponentType<ReturnType<F>>>;
+
+        /** Creates a closure to close any open components. */
+        close(): RHU_CLOSURE;
+
+        /** Static closure instance. */
+        readonly closure: RHU_CLOSURE;
+        
+        /** Create a positional marker on the DOM. */
+        marker(name?: PropertyKey): RHU.Node<RHU_MARKER>;
+        
+        /** Create an open tag for the given object that needs to be treated as a DOM element. */
+        open<T = any>(object: T | RHU.Node<T>): RHU.Node<T>;
+
+        /** Bind the provided object that needs to be treated as a DOM element such that it can be accessed in `RHU.Component`. */
+        bind<T = any>(object: T | RHU.Node<T>, name: PropertyKey): RHU.Node<T>;
+
+        /** Refer to `RHU.Component<T>.box` */
+        box<T extends Record<PropertyKey, any> = Record<PropertyKey, any>>(html: RHU.Component<T> | RHU.Node<RHU.Component<T>>): RHU.Node<RHU.Component<T>>;
+
+        /** Refer to `RHU.Node<T>.transform` */
+        transform<T = any>(object: T | RHU.Node<T>, transform: (node: T) => void): RHU.Node<T>;
+        
+        /** 
+         * Map a signal of an array or map to elements. 
+         * 
+         * TODO(randomuserhi): Expand documentation here - provide an example of how to use.
+         */
+        map<T, H extends RHU.Component, K = T extends any[] ? number : T extends Map<infer K, any> ? K : any, V = T extends (infer V)[] ? V : T extends Map<any, infer V> ? V : any>(signal: SignalBase<T>, iterator: undefined, factory: (kv: [k: K, v: V], el?: H) => H | undefined, dispose?: (el: H) => void): RHU.Component<{ readonly signal: SignalBase<T> }>;
+        map<T, K, V, H extends RHU.Component>(signal: SignalBase<T>, iterator: (value: T) => IterableIterator<[key: K, value: V]> | [key: K, value: V][], factory: (kv: [k: K, v: V], el?: H) => H | undefined, dispose?: (el: H) => void): RHU.Component<{ readonly signal: SignalBase<T> }>;
+
+        /** 
+         * @returns Weakref to the given object where its lifetime is tied to the provided target.
+         * - Whilst the target is still retained, the object is also retained.
+         * - If the target is GC'd, the object may be GC'd as long as no other references to it exist.
+         */
+        ref<T extends object, R extends object>(target: T, obj: R): { deref(): R | undefined, hasref(): boolean };
+
+        /** @returs Weakref to the given object */
+        ref<T extends object>(obj: T): { deref(): T | undefined, hasref(): boolean };
+
+        // Standard HTML DOM manipulation functions, but they support components.
+
+        append(target: globalThis.Node | RHU.Component, ...nodes: (globalThis.Node | RHU.Component)[]): void;
+        insertBefore(target: globalThis.Node | RHU.Component, node: (globalThis.Node | RHU.Component), ref: (globalThis.Node | RHU.Component)): void;
+        remove(target: globalThis.Node | RHU.Component, ...nodes: (globalThis.Node | RHU.Component)[]): void;
+        replaceWith(target: globalThis.Node | RHU.Component, ...nodes: (globalThis.Node | RHU.Component)[]): void;
+        replaceChildren(target: Element, ...nodes: (globalThis.Node | RHU.Component)[]): void;
+
+        //
+
+        /** Watch a node for `mount` and `dismount` events */
+        observe(node: globalThis.Node): void;
+    }
+
+}
+
+/**  
+ * Helper function for interpretting string templates.
+ * 
+ * Replaces all non-standard DOM elements with slots which can then be replaced in post,
+ * stitching together the template to produce a valid string that can be parsed into HTML.
+ */
+function stitch(interp: Interp, slots: Slot[]): string | undefined {
+    if (interp === undefined) return undefined;
+    
+    const index = slots.length;
+    if (isNode(interp) || isHTML(interp) || isSignal(interp) || RHU_MARKER.is(interp)) {
+        slots.push(interp);
+        return `<rhu-slot rhu-internal="${index}"></rhu-slot>`;
+    } else if (RHU_NODE.is(interp)) {
+        slots.push(interp);
+        return `<rhu-slot rhu-internal="${index}">${(interp as any).isOpen ? `` : `</rhu-slot>`}`;
+    } else if (RHU_CLOSURE.is(interp)) {
+        return `</rhu-slot>`;
+    } else {
+        return undefined;
+    }
+}
+
+const defineProperties = Object.defineProperties;
+
+/** Tag used to tell the difference between a regular array and an array that holds a collection of binds. */
+const bindArrayTag = Symbol("RHU_HTML.[[BIND_ARRAY]]");
+
+/** Utility function that checks if the provided object is the special array holding a collection of binds. */
+const isBindArray: <T = any>(obj: any) => obj is T = ((obj: any) => /**Array.isArray(obj) &&*/ bindArrayTag in obj) as any;
+
+/** 
+ * Helper function that binds a value to the target instance.
+ * If the bind already exists, converts it to an array and pushes the new value.
+ */
+function bind(instance: Record<PropertyKey, any> & { [DOM]: RHU_COMPONENT }, key: PropertyKey, value: any) {
+    if (key in instance) {
+        // If the key already exists, then the value should be converted to a "bind array".
+        // A "bind array" is just a tagged js array indicating it holds a collection of values.
+        // This is to distinguish it from a regular array so that we can support a collection of arrays.
+
+        if (isBindArray<any[]>(instance[key])) {
+            // If it is already a bind array, push the value to it.
+            instance[key].push(value);
+        } else {
+            // If it is not already a bind array, make it one.
+            const collection = [instance[key], value];
+            (collection as any)[bindArrayTag] = undefined;
+            instance[key] = collection;
+        }
+    } else {
+        // If the key does not exist, store it as a single value.
+        instance[key] = value; 
+        (instance[DOM] as any).binds.push(key);
+    }
+}
+
+/**
+ * Helper function that creates a weak reference to the fragment marker and binds it to the component.
+ * This helper function exists to prevent capturing unnecessary scopes when binding the weak ref which could prevent GC.
+ */
+function makeRef(implementation: RHU_COMPONENT, ref: WeakRef<Node>["deref"]) {
+    const wref = {
+        deref() {
+            const marker = ref();
+            if (marker === undefined) return undefined;
+            return markers.get(marker as any);
+        },
+        hasref() {
+            return ref() !== undefined;
+        }
+    };
+
+    defineProperties(implementation, {
+        ref: {
+            get() {
+                return wref;
+            },
+            configurable: false
+        }
+    });
+}
+
+/**
+ * Helper function that binds a signal to a given node reference. 
+ * This helper function exists to prevent capturing the Text node itself in the scope of the main function.
+ */
+function bindRefToSignal(ref: WeakRef<Text>, slot: SignalBase) {
+    slot.on((value) => {
+        const node = ref.deref();
+        if (node === undefined) return;
+        node.nodeValue = (slot as SignalBase).string(value);
+    }, { condition: () => ref.deref() !== undefined });
+}
+
+/** Helper that generates a HTML text node from a signal. */
+export function textFromSignal(signal: SignalBase): Text {
+    const text = document.createTextNode(`${signal()}`);
+    const ref = new WeakRef(text);
+    bindRefToSignal(ref, signal);
+
+    return text;
+}
+
+/**
+ * Actually creates a component from template string.
+ * 
+ * @param proto Prototype of returned component - Must extend `componentProto`
+ * @param first The template string array
+ * @param interpolations Template string array substitutions
+ * @returns 
+ */
+function createComponent<Proto, T extends Record<PropertyKey, any> & Proto = Record<PropertyKey, any> & Proto>(proto: Proto, first: First, ...interpolations: Interp[]): RHU.Component<T> {
+    // Stitch together source to form valid HTML.
+    // Replaces objects that should be interpreted as custom elements with slots
+    // that will get replaced with actual DOM later.
+    let source = first[0];
+    const slots: Slot[] = [];
+    for (let i = 1; i < first.length; ++i) {
+        const interp = interpolations[i - 1];
+        const result = stitch(interp, slots);
+        if (result !== undefined) {
+            source += result;
+        } else if (Array.isArray(interp)) {
+            const array = interp as Single[];
+            for (const interp of array) {
+                const result = stitch(interp, slots);
+                if (result !== undefined) {
+                    source += result;
+                } else {
+                    source += interp;
+                }
+            }
+        } else {
+            source += interp;
+        }
+
+        source += first[i];
+    }
+
+    // Parse source using a `template` element
+    const template = document.createElement("template");
+    template.innerHTML = source;
+    const fragment = template.content;
+
+    // Remove nonsense text nodes and comments
+    document.createNodeIterator(fragment, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_COMMENT, {
+        acceptNode(node) {
+            if (node.nodeType === Node.COMMENT_NODE) node.parentNode?.removeChild(node);
+            else {
+                const value = node.nodeValue;
+                if (value === null || value === undefined) node.parentNode?.removeChild(node);
+                else if (value.trim() === "") node.parentNode?.removeChild(node);
+            }
+            return NodeFilter.FILTER_REJECT;
+        }
+    }).nextNode();
+
+    // Create component instance
+    let _proto = proto as any;
+    if (_proto !== undefined) {
+        // If a custom proto is provided, we need to ensure it has the right interface:
+        if (_proto[Symbol.iterator] !== COMPONENT_PROTOTYPE[Symbol.iterator])
+            _proto[Symbol.iterator] = COMPONENT_PROTOTYPE[Symbol.iterator];
+        if (_proto[Symbol.toStringTag] !== COMPONENT_PROTOTYPE[Symbol.toStringTag])
+            _proto[Symbol.toStringTag] = `RHU.Component(Custom Prototype)`; // Signal the component has a custom prototype
+    } else 
+        _proto = COMPONENT_PROTOTYPE; // Otherwise use default proto
+    const instance: RHU.Component<T> = Object.create(_proto);
+    const implementation = new RHU_COMPONENT(instance);
+    (instance as any)[DOM] = implementation;
+
+    // Create bindings
+    for (const el of fragment.querySelectorAll("*[m-id]")) {
+        const key = el.getAttribute("m-id")!;
+        el.removeAttribute("m-id");
+        bind(instance, key, el);
+    }
+
+    // Create element list that keeps track of which objects from the string template
+    // belong to which slots generated by the stitching process.
+    let elements: (RHU.Component | Node)[] = [];
+    for (const node of fragment.childNodes) {
+        let attr: string | null;
+        if (isElement(node) && (attr = node.getAttribute("rhu-internal"))) {
+            const i = parseInt(attr);
+            if (isNaN(i)) {
+                throw new Error("Could not obtain slot id.");
+            }
+
+            node.setAttribute("rhu-elements", elements.length.toString());
+            elements.push(undefined!);
+        } else {
+            elements.push(node);
+        }
+    }
+    
+    // Parse the slots, replacing with the actual DOM.
+    let filterUndefined = false;
+    for (const slotElement of fragment.querySelectorAll("rhu-slot[rhu-internal]")) {
+        try {
+            const attr = slotElement.getAttribute("rhu-internal");
+            if (attr === undefined || attr === null) {
+                throw new Error("Could not find internal attribute.");
+            }
+            const i = parseInt(attr);
+            if (isNaN(i)) {
+                throw new Error("Could not find slot id.");
+            }
+
+            let hole: undefined | number | string | null = slotElement.getAttribute("rhu-elements");
+            if (hole === null) {
+                hole = undefined;
+            } else {
+                hole = parseInt(hole);
+                if (isNaN(hole)) {
+                    hole = undefined;
+                }
+            }
+
+            const item = slots[i];
+            
+            // Isolate the descriptor (wrapper) from the actual slot object.
+            let descriptor: RHU_NODE | undefined = undefined;
+            let slot: Exclude<typeof item, RHU_NODE>; 
+            if (RHU_NODE.is(item)) {
+                descriptor = item;
+                slot = item.node;
+            } else {
+                slot = item;
+            }
+
+            if (isSignal(slot)) {
+                const node = textFromSignal(slot);
+
+                // Manage binds
+                const slotName: RHU_NODE["name"] = (descriptor as any)?.name;
+                if (slotName !== undefined) {
+                    bind(instance, slotName, slot);
+                }
+
+                replaceWith(slotElement, node);
+                if (hole !== undefined) elements[hole] = node;
+            } else if (isNode(slot)) {
+                // Manage binds
+                const slotName: RHU_NODE["name"] = (descriptor as any)?.name;
+                if (slotName !== undefined) {
+                    bind(instance, slotName, slot);
+                }
+
+                replaceWith(slotElement, slot);
+                if (hole !== undefined) elements[hole] = slot;
+            } else if (RHU_MARKER.is(slot)) {
+                const node = document.createComment(" << rhu-marker >> ");
+                (node as any)[DOM] = "marker";
+
+                // Manage binds
+                const slotName: RHU_NODE["name"] = (descriptor as any)?.name;
+                if (slotName !== undefined) {
+                    bind(instance, slotName, node);
+                }
+
+                replaceWith(slotElement, node);
+                if (hole !== undefined) elements[hole] = node;
+            } else if (isHTML(slot)) {
+                const slotImplementation = slot[DOM];
+
+                // Obtain overridable settings
+                let boxed: boolean | undefined = (descriptor as any)?.boxed;
+                if (boxed === undefined) boxed = (slotImplementation as any).boxed;
+
+                // Manage binds
+                if (boxed || (descriptor as any)?.name !== undefined) {
+                    const slotName: RHU_NODE["name"] = (descriptor as any)?.name;
+                    if (slotName !== undefined) {
+                        bind(instance, slotName, slot);
+                    }
+                } else {
+                    for (const key of ((slotImplementation as any).binds as RHU_COMPONENT["binds"])) {
+                        bind(instance, key, slot[key]);
+                    }
+                }
+
+                if ((slotImplementation as any).onChildren !== undefined) (slotImplementation as any).onChildren(slotElement.childNodes);
+                
+                replaceWith(slotElement, slot);
+                if (hole !== undefined) elements[hole] = slot;
+            } else {
+                // If its an unknown type, treat it as a text node
+                const node = document.createTextNode(`${slot}`);
+
+                // Manage binds
+                const slotName: RHU_NODE["name"] = (descriptor as any)?.name;
+                if (slotName !== undefined) {
+                    bind(instance, slotName, node);
+                }
+
+                replaceWith(slotElement, node);
+                if (hole !== undefined) elements[hole] = node;
+            }
+        } catch (e) {
+            if (slotElement.parentNode === fragment) filterUndefined = true;
+            slotElement.replaceWith();
+            console.error(e);
+            continue;
+        }
+    }
+
+    if (filterUndefined) {
+        elements = elements.filter(v => v !== undefined);
+    }
+
+    // Append elements
+    implementation.append(...elements);
+    
+    // We have to call a separate function to prevent context hoisting from 
+    // preventing garbage collection of the marker node.
+    //
+    // By declaring an inline function, it will include the context of the above scope,
+    // this is what allows us to reference `marker` despite it being outside of the
+    // inline functions scope. However, this means that the inline function holds a reference
+    // to the context, thus preventing GC of variables inside of said context (such as `marker`).
+    //
+    // Since we want to be able to hold a reference to the `ref` inline function but not the context
+    // it resides in, we call a separate function. The separate function has its own context (hence
+    // we can no longer access `marker` as per its scope) and thus circumvents this issue.
+    const markerRef = new WeakRef((implementation as any).marker as RHU_COMPONENT<T>["marker"]);
+    makeRef(implementation, markerRef.deref.bind(markerRef));
+
+    return instance as RHU.Component<T>;
+}
+
+/**
+ * createComponent but without a prototype
+ */
+const defaultCreateComponent = arrowBind(createComponent<unknown>, undefined);
+
+/**
+ * Map of component factories so we don't create a new one for the same prototype every call
+ */
+const componentFactoryMap = new WeakMap<object, (first: First, ...interpolations: Interp[]) => RHU.Component>();
+
+export const html: RHU.HTML = (<T extends Record<PropertyKey, any> = Record<PropertyKey, any>>(first: First | RHU.Component | object | undefined, ...interpolations: Interp[]) => {
+    if (isHTML(first)) {
+        // Handle overload which just gets the underlying DOM interface of the provided component.
+        return first[DOM];
+    }
+
+    if (isTemplateStringsArray(first)) {
+        // Handle overload for creating `RHU.Component`
+        return createComponent<unknown, T>(undefined, first, ...interpolations);
+    }
+
+    // Handle overload for creating `RHU.Component` with prototype
+    
+    // Assign necessary methods for RHU.Component interface
+    // Without these, RHU component methods fail, so we just override them
+    const proto = first;
+
+    if (proto === undefined) return defaultCreateComponent;
+
+    let factory = componentFactoryMap.get(proto);
+    if (factory === undefined) {
+        factory = arrowBind(createComponent<any, T>, proto);
+        componentFactoryMap.set(proto, factory);
+    }
+    return factory;
+}) as RHU.HTML;
+html.wc = ((...args: any[]) => {
+    if (args.length === 0) {
+        return html.wc;
+    }
+    return args[0];
+}) as unknown as any;
+html.close = () => RHU_CLOSURE.instance;
+(html as any).closure = RHU_CLOSURE.instance;
+html.open = (obj) => {
+    if (RHU_NODE.is(obj)) {
+        obj.open();
+        return obj;
+    }
+    // Wrap object as a RHU_NODE, if it isn't already
+    return new RHU_NODE(obj).open();
+};
+html.bind = (obj, name: PropertyKey) => {
+    if (RHU_NODE.is(obj)) {
+        obj.bind(name);
+        return obj;
+    }
+    // Wrap object as a RHU_NODE, if it isn't already
+    return new RHU_NODE(obj).bind(name);
+};
+html.box = (el, boxed?: boolean) => {
+    if (RHU_NODE.is(el)) {
+        el.box(boxed);
+        return el;
+    }
+    // Wrap object as a RHU_NODE, if it isn't already
+    return new RHU_NODE(el).box(boxed);
+};
+/// Helper functions for `html.ref` that prevent capturing objects in scopes
+/// to allow for proper garbage collection
+function makeRef_noTarget(deref: () => any) {
+    return {
+        deref,
+        hasref: () => deref() !== undefined
+    };
+}
+function makeRef_withTarget(wr: { deref: () => any }, wmap: WeakMap<any, any>) {
+    return {
+        deref() {
+            return wmap.get(wr.deref()!);
+        },
+        hasref() {
+            return wr.deref() !== undefined;
+        }
+    };
+}
+///
+html.ref = ((target: any, obj: any) => {
+    if (obj === undefined) {
+        // Overload for obtaining a weakRef to the target
+
+        if (isHTML(target)) {
+            return target[DOM].ref;
+        }
+        const deref = WeakRef.prototype.deref.bind(new WeakRef(target));
+        return makeRef_noTarget(deref);
+    } else {
+        // Overload for creating a weakref to the given object where its lifetime is tied to the provided target.
+        // - Whilst the target is still retained, the object is also retained.
+        // - If the target is GC'd, the object may be GC'd as long as no other references to it exist.
+
+        const wr = isHTML(target) ? target[DOM].ref : new WeakRef(target);
+        const wmap = new WeakMap();
+        wmap.set(target, obj);
+        return makeRef_withTarget(wr, wmap);
+    }
+}) as any;
+html.replaceWith = replaceWith;
+html.remove = remove;
+html.append = (target, ...nodes) => {
+    if (isHTML(target)) {
+        // If the target is a component, we can append to its internal fragment.
+        target[DOM].append(...nodes);
+    } else {
+        for (const node of nodes) {
+            // In case the component is owned by a fragment, we need to unbind it
+            // now that it is removed from the DOM tree (and thus the fragment as well).
+            RHU_FRAGMENT.unbind(node);
+
+            if (isHTML(node)) {
+                // Append the nodes that make up the fragment
+                for (const n of node) {
+                    target.appendChild(n);
+                }
+            } else {
+                target.appendChild(node);
+            }
+        }
+    }
+};
+html.insertBefore = (target, node, ref) => {
+    if (isHTML(target)) {
+        // If the target is a component, we can call insertBefore on its internal fragment.
+        target[DOM].insertBefore(node, ref);
+    } else {
+        // In case the component is owned by a fragment, we need to unbind it
+        // now that it is removed from the DOM tree (and thus the fragment as well).
+        RHU_FRAGMENT.unbind(node);
+
+        const nref = isHTML(ref) ? ref[DOM].__firstNode : ref;
+        if (isHTML(node)) {
+            // Insert the nodes that make up the fragment
+            for (const n of node) {
+                target.insertBefore(n, nref);
+            }
+        } else {
+            target.insertBefore(node, nref);
+        }
+    }
+};
+html.replaceChildren = (target, ...nodes) => {
+    target.replaceChildren();
+    html.append(target, ...nodes);
+};
+
+// Helper function that creates the update callback for `html.map`.
+// Required to prevent the `update` callback from capturing unnecessary variables in the scope and keeping them alive.
+function map_update(ref : {
+    deref(): RHU.Component<{
+        signal: SignalBase<any>;
+        existingEls: Map<any, [el: RHU.Component | undefined, pos: number]>;
+    }> | undefined;
+    hasref(): boolean;
+}, iterator: (value: any) => IterableIterator<[key: any, value: any]> | undefined, factory: (kv: [k: any, v: any], el?: RHU.Component) => RHU.Component | undefined, dispose?: (el: RHU.Component) => void) {
+    // Stack used to book keep out-of-order items.
+    const stack: RHU.Component[] = [];
+    // Recycled buffer used to reduce garbage collections
+    let _existingEls = new Map<any, [el: RHU.Component | undefined, pos: number]>();
+    return (value: any) => {
+        const dom = ref.deref();
+        if (dom === undefined) return;
+        
+        const internal = dom[DOM];
+
+        // Obtain iterable
+        let kvIter: Iterable<[key: any, value: any]> | undefined = undefined;
+        if (iterator !== undefined) {
+            try {
+                kvIter = iterator(value);
+            } catch (e) {
+                console.error(e);
+            }
+        } else if (isMap(value) || isArray(value)) {
+            kvIter = value.entries();
+        }
+    
+        if (kvIter != undefined) {
+            // Store the old position of the previous existing element
+            let prev: number | undefined = undefined;
+
+            for (const kv of kvIter) {
+                const [key] = kv;
+
+                if (_existingEls.has(key)) {
+                    console.warn("'html.map' does not support non-unique keys.");
+                    continue;
+                }
+
+                const pos = _existingEls.size; // Position of current element
+
+                // Get previous state if the element existed previously
+                const old = dom.existingEls.get(key);
+                const oldEl = old === undefined ? undefined : old[0];
+
+                // Generate new state
+                let el = undefined;
+                try {
+                    el = factory(kv, oldEl);
+                } catch (e) {
+                    // Continue on error
+                    console.error(e);
+                    continue;
+                }
+            
+                // Skip if both old element and new element are undefined
+                if (oldEl === undefined && el === undefined) continue;
+
+                // If the element previously existed, and its old position is less than
+                // the last seen existing element, then it must be out of order since
+                // it now needs to exist after the last seen existing element.
+                //
+                // NOTE(randomuserhi): The below code is simply the inverse of the above statement
+                //                     for if the element is in order.
+                const inOrder = old === undefined || prev === undefined || old[1] > prev;
+                const outOfOrder = !inOrder;
+
+                if (old !== undefined && inOrder) {
+                    // If the element last existed and is in order, append
+                    // elements from the stack and update `prev`.
+                    prev = old[1];
+                
+                    if (oldEl !== undefined) {
+                        for (const el of stack) {
+                            internal.insertBefore(el, oldEl);
+                        }
+                        stack.length = 0;
+                    }
+                } else if (el !== oldEl || outOfOrder) {
+                    // If the element is out of order / is different to the existing 
+                    // one, remove it and append to stack
+                    if (oldEl !== undefined) {
+                        internal.remove(oldEl);
+                        dispose?.(oldEl);
+                    }
+
+                    if (el !== undefined) {
+                        stack.push(el);
+                    }
+                }
+
+                // Update element map
+                if (old === undefined) {
+                    _existingEls.set(key, [el, pos]);
+                } else {
+                    old[0] = el;
+                    old[1] = pos;
+                    _existingEls.set(key, old);
+                }
+            }
+
+            // Append remaining elements in stack to the end of the map
+            if (stack.length > 0) {
+                internal.append(...stack);
+            }
+            stack.length = 0;
+        }
+
+        // Remove elements that no longer exist
+        for (const [key, [el]] of dom.existingEls) {
+            if (_existingEls.has(key)) continue;
+            if (el === undefined) continue;
+
+            internal.remove(el);
+            dispose?.(el);
+        }
+        dom.existingEls.clear();
+
+        const temp = _existingEls; 
+        _existingEls = dom.existingEls;
+        dom.existingEls = temp;
+    };
+}
+html.map = ((signal: SignalBase<any>, iterator: (value: any) => IterableIterator<[key: any, value: any]> | undefined, factory: (kv: [k: any, v: any], el?: RHU.Component) => RHU.Component | undefined, dispose?: (el: RHU.Component) => void) => {
+    const dom = html<{ 
+        signal: SignalBase<any>; 
+        existingEls: Map<any, [el: RHU.Component | undefined, pos: number]>;
+    }>``;
+    
+    dom.signal = signal;
+
+    dom.existingEls = new Map();
+
+    const ref = dom[DOM].ref;
+
+    // Update map on signal change
+    //
+    // We have to call a separate function to prevent context hoisting from 
+    // preventing garbage collection of the created `dom` component.
+    //
+    // By declaring an inline function, it will include the context of the above scope,
+    // this is what allows us to reference `ref` despite it being outside of the
+    // inline functions scope. However, this means that the inline function holds a reference
+    // to the context, thus preventing GC of variables inside of said context (such as `dom`)
+    // which defeats the whole point of holding a WeakRef to it via `ref`.
+    //
+    // Since we want to be able to hold a reference to the `ref` in the inline function but not the context
+    // it resides in, we call a separate function. The separate function has its own context (hence
+    // we can no longer access `dom` as per its scope) and thus circumvents this issue.
+    signal.on(map_update(ref, iterator, factory, dispose), { condition: ref.hasref });
+
+    return dom;
+}) as any;
+html.transform = (el, transform) => {
+    if (RHU_NODE.is(el)) {
+        el.transform(transform);
+        return el;
+    }
+    return new RHU_NODE(el).transform(transform);
+};
+html.marker = (name) => {
+    return new RHU_NODE(new RHU_MARKER()).bind(name);
+};
+html.observe = function(target: Node): void {
+    observer.observe(target, {
+        childList: true,
+        subtree: true
+    });
+};
+
+// Custom event and observer to add some nice events
+declare global {
+    interface GlobalEventHandlersEventMap {
+        "mount": CustomEvent;
+        "dismount": CustomEvent;
+    }
+}
+
+const recursiveDispatch = function(node: Node, event: keyof GlobalEventHandlersEventMap): void {
+    if (isElement(node)) node.dispatchEvent(new CustomEvent(event));
+    for (const child of node.childNodes)
+        recursiveDispatch(child, event);
+};
+const observer = new MutationObserver(function(mutationList) {
+    for (const mutation of mutationList) {
+        switch (mutation.type) {
+        case "childList": {
+            for (const node of mutation.addedNodes)
+                recursiveDispatch(node, "mount");
+            for (const node of mutation.removedNodes)
+                recursiveDispatch(node, "dismount");
+        } break;
+        }
+    }
+});
+__ASL.onAbort(() => {
+    observer.disconnect();
+});
+
+const onDocumentLoad = function() {
+    html.observe(document);
+};
+if (document.readyState === "loading") { 
+    document.addEventListener("DOMContentLoaded", onDocumentLoad);
+} else { 
+    // Document may have loaded already if the script is declared as defer, in this case just call onload
+    onDocumentLoad();
+}
+

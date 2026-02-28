@@ -1,0 +1,26 @@
+{
+  "name": "rapidregistry",
+  "version": "1.0.0",
+  "description": "",
+  "homepage": "https://github.com/randomuserhi/RapidRegistry#readme",
+  "bugs": {
+    "url": "https://github.com/randomuserhi/RapidRegistry/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/randomuserhi/RapidRegistry.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "",
+  "main": "",
+  "directories": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.51.0",
+    "eslint": "^9.39.2",
+    "eslint-plugin-unused-imports": "^4.3.0"
+  }
+}

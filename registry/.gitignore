@@ -1,0 +1,6 @@
+.build/
+.tsconfig/
+@types/
+*.tsbuildinfo
+node_modules/
+tsconfig.json

@@ -1,0 +1,41 @@
+{
+  "name": "rapid",
+  "version": "1.0.0",
+  "description": "",
+  "main": "build/Rapid/App.cjs",
+  "type": "module",
+  "scripts": {
+    "make": "npx tsc -p ./scripts/tsconfig.json && node scripts/build/make.js",
+    "start": "node build/Rapid/App.cjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/randomuserhi/Rapid.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/randomuserhi/Rapid/issues"
+  },
+  "homepage": "https://github.com/randomuserhi/Rapid#readme",
+  "dependencies": {
+    "@babel/core": "^7.28.4",
+    "@babel/preset-env": "^7.28.3",
+    "@babel/template": "^7.27.2",
+    "@types/node": "^24.9.1",
+    "@types/ws": "^8.18.1",
+    "@types/better-sqlite3": "^7.6.13",
+    "better-sqlite3": "^12.6.2",
+    "chokidar": "^4.0.3",
+    "typescript": "^5.9.3",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/babel__core": "^7.20.5",
+    "@types/babel__template": "^7.4.4",
+    "@typescript-eslint/eslint-plugin": "^8.46.3",
+    "@typescript-eslint/parser": "^8.46.3",
+    "eslint": "^9.39.1",
+    "eslint-plugin-unused-imports": "^4.3.0"
+  }
+}

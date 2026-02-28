@@ -1,0 +1,18 @@
+{
+    "front": {
+        "public": [
+            "./lib/*"
+        ]
+    },
+    "flex": {
+        "public": [
+            "./lib/*"
+        ]
+    },
+    "back": {
+        "public": [
+            "./lib/*"
+        ],
+        "entry": "app/main.asl.js"
+    }
+}

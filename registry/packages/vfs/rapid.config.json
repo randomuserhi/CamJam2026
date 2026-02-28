@@ -1,0 +1,23 @@
+{
+    "back": {
+        "entry": "app/main.asl.js",
+        "public": [
+            "./lib/*"
+        ]
+    },
+    "flex": {
+        "public": [
+            "./lib/*"
+        ]
+    },
+    "front": {
+        "public": [
+            "./lib/*"
+        ]
+    },
+    "dependencies": [
+        "rhu",
+        "common",
+        "hotreload"
+    ]
+}
