@@ -796,15 +796,15 @@ export class RapidRuntime {
                 // Check again incase 2 async calls reach here at the same time
                 app = this.apps.get(pckgName);
                 if (app === undefined) {
+                    // Build app
+                    await this.packageBuilder.build(this.packageRegistry, pckgInfo, false);
+
                     // Auto watch launched apps
                     this.watch(pckgInfo.name);
         
                     // Launch app instance
                     app = new RapidApp(this, pckgInfo);
                     this.apps.set(pckgName, app);
-
-                    // Build app
-                    this.packageBuilder.build(this.packageRegistry, pckgInfo, false);
                 }
             }
 
