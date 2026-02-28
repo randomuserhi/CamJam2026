@@ -1122,8 +1122,8 @@ export class PackageBuilder {
     }
 
     /** Builds the given package */
-    public async build(registry: PackageRegistry, pckgInfo: PackageInfo) {
-        await initPackage(registry, pckgInfo, this.typeDir, { initDependencies: true, forceSelf: true });
+    public async build(registry: PackageRegistry, pckgInfo: PackageInfo, forceSelf: boolean = true) {
+        await initPackage(registry, pckgInfo, this.typeDir, { initDependencies: true, forceSelf });
 
         this.ASLTranspilationResults = [];
         this.ASLObjects.clear();

@@ -802,6 +802,9 @@ export class RapidRuntime {
                     // Launch app instance
                     app = new RapidApp(this, pckgInfo);
                     this.apps.set(pckgName, app);
+
+                    // Build app
+                    this.packageBuilder.build(this.packageRegistry, pckgInfo, false);
                 }
             }
 
