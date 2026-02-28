@@ -1,5 +1,5 @@
 import { xor } from "./rand.asl";
-import { Renderer } from "./renderer.asl";
+import { Camera, Renderer } from "./renderer.asl";
 
 export class Game {
     public readonly tickRate = 60;
@@ -8,6 +8,7 @@ export class Game {
     public readonly fixedDeltaTime = this.totalFrameTimeS;
 
     public readonly renderer: Renderer;
+    private readonly camera: Camera;
 
     public readonly rand: () => number;
 
@@ -15,6 +16,7 @@ export class Game {
 
     constructor(renderer: Renderer, rngSeed: number) {
         this.renderer = renderer;
+        this.camera = new Camera(renderer);
         this.rand = xor(rngSeed);
     }
 
@@ -25,7 +27,14 @@ export class Game {
 
     // Called every render frame (frame dependent, varied delta time)
     public update(dt: number) {
+        this.camera.start();
+
         const ctx = this.renderer.ctx;
-        ctx.clearRect(0, 0, this.renderer.canvas.width, this.renderer.canvas.height);
+        ctx.clearRect(0, 0, this.camera.size.x, this.camera.size.y);
+
+        ctx.fillStyle = "rgb(255, 0, 0)";
+        ctx.fillRect(-80, -45, 160, 90);
+
+        this.camera.end();
     }
 }
