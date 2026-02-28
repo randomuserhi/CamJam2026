@@ -36,7 +36,7 @@ interface _BoxCollider {
     _size: BoxCollider_Vec2;
     _dirty: boolean;
     _needToReconstructVerts: boolean;
-    
+
     hx: number;
     hy: number;
     axis: [right: Vec2, up: Vec2];
@@ -48,7 +48,7 @@ export class BoxCollider {
     private _size: BoxCollider_Vec2 = new BoxCollider_Vec2(this, true);
     private _dirty: boolean = false;
     private _needToReconstructVerts: boolean = false;
-    
+
     private hx: number = this._size.x * 0.5;
     private hy: number = this._size.y * 0.5;
     private axis: [right: Vec2, up: Vec2] = [Vec2.right(), Vec2.up()];
@@ -105,12 +105,12 @@ export class BoxCollider {
         this._dirty = false;
     }
 
-    public draw(ctx: CanvasRenderingContext2D) {
+    public draw(ctx: CanvasRenderingContext2D, color?: string) {
         this.update();
         ctx.save();
         ctx.translate(this.position.x, this.position.y);
         ctx.rotate(this._rotation);
-        ctx.strokeStyle = "rgb(0, 255, 0)";
+        ctx.strokeStyle = color ?? "rgb(0, 255, 0)";
         ctx.lineWidth = 1;
         ctx.strokeRect(-this.hx, -this.hy, this._size.x, this._size.y);
         ctx.restore();
@@ -246,7 +246,7 @@ function isCollidingBoxBox(a: BoxCollider, b: BoxCollider): ContactInfo | undefi
     }
 
     centerDirection(a.position, b.position, dir);
-    
+
     const normal = Vec2.copy(smallestAxis);
     if (Vec2.dot(dir, normal) >= 0) {
         Vec2.scale(normal, -1, normal);
@@ -432,7 +432,7 @@ function rayCircle(ray: Ray, collider: CircleCollider): RayHitInfo | undefined {
     };
 }
 
-const __rayBox = { 
+const __rayBox = {
     localOrigin: Vec2.zero(),
     localDir: Vec2.zero(),
     right: Vec2.right(),

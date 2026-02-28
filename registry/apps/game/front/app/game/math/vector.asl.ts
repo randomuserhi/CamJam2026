@@ -28,6 +28,10 @@ export namespace Vec2 {
         return result;
     }
 
+    export function equals(a: Vec2, b: Vec2) {
+        return a.x === b.x && a.y === b.y;
+    }
+
     export function left(result?: Vec2) {
         if (!result) result = { x: 0, y: 0 };
 
@@ -76,8 +80,13 @@ export namespace Vec2 {
         if (!result) result = { x: 0, y: 0 };
 
         const length = magnitude(v);
-        result.x = v.x / length;
-        result.y = v.y / length;
+        if (length !== 0) {
+            result.x = v.x / length;
+            result.y = v.y / length;
+        } else {
+            result.x = 0;
+            result.y = 0;
+        }
 
         return result;
     }
@@ -143,6 +152,21 @@ export namespace Vec2 {
 
         result.x = v.x * a;
         result.y = v.y * a;
+
+        return result;
+    }
+
+    export function angle(a: Vec2, b: Vec2) {
+        const dot = a.x * b.x + a.y * b.y
+        const cross = a.x * b.y - a.y * b.x
+        return Math.atan2(cross, dot)
+    }
+
+    export function lerp(a: Vec2, b: Vec2, t: number, result?: Vec2) {
+        if (!result) result = { x: 0, y: 0 };
+
+        result.x = (b.x - a.x) * t + a.x;
+        result.y = (b.y - a.y) * t + a.y;
 
         return result;
     }

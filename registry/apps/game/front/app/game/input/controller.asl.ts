@@ -4,21 +4,28 @@ import { InputProvider, InputState } from "./inputProvider.asl";
 export class ControllerInput extends InputProvider {
     override getInput(tickIdx: number): InputState {
         const gamepads = navigator.getGamepads(); // returns an array of connected gamepads
-        
+
         const state: InputState = {
             movement: Vec2.zero(),
             attack: false,
             dodge: false
         };
 
-        const gp = gamepads[1];
-        if (gp === null) return state;
+        let gp = undefined;
+        for (const _gp of gamepads) {
+            if (!_gp) continue;
+            gp = _gp;
+            break;
+        }
+        if (!gp) return state;
 
         state.movement.x = gp.axes[0];
         state.movement.y = -gp.axes[1];
 
         if (Math.abs(state.movement.x) < 0.01) state.movement.x = 0;
         if (Math.abs(state.movement.y) < 0.01) state.movement.y = 0;
+
+        Vec2.normalize(state.movement, state.movement);
 
         state.attack = gp.buttons[3].pressed;
         state.dodge = gp.buttons[2].pressed;

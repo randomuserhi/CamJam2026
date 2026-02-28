@@ -43,7 +43,7 @@ try {
 
     console.log("\nGenerate Registry Types...");
 
-    const typesFolder = "..\\registry\\_lib";
+    const typesFolder = "../registry/_lib";
     await rm(typesFolder, { recursive: true, force: true });
 
     await mkdir(typesFolder);
