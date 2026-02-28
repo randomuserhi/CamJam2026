@@ -105,6 +105,17 @@ export class BoxCollider {
         this._dirty = false;
     }
 
+    public draw(ctx: CanvasRenderingContext2D) {
+        this.update();
+        ctx.save();
+        ctx.translate(this.position.x, this.position.y);
+        ctx.rotate(this._rotation);
+        ctx.strokeStyle = "rgb(0, 255, 0)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-this.hx, -this.hy, this._size.x, this._size.y);
+        ctx.restore();
+    }
+
     public get rotation() {
         return this._rotation;
     }
@@ -134,6 +145,14 @@ export class BoxCollider {
 export class CircleCollider {
     position: Vec2 = Vec2.zero();
     radius: number = 1;
+
+    public draw(ctx: CanvasRenderingContext2D) {
+        ctx.beginPath();
+        ctx.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgb(0, 255, 0)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+    }
 }
 
 export interface ContactInfo {

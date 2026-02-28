@@ -3,7 +3,7 @@ import { Vec2 } from "./math/vector.asl";
 export class Camera {
     readonly renderer: Renderer
     readonly position: Vec2 = Vec2.set(0, 0);
-    readonly size: Vec2 = Vec2.set(160, 90);
+    readonly size: Vec2 = Vec2.set(320, 180);
 
     constructor(renderer: Renderer) {
         this.renderer = renderer;
@@ -40,5 +40,7 @@ export class Renderer {
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
         this.ctx = this.canvas.getContext("2d")!;
+
+        this.ctx.imageSmoothingEnabled = false;
     }
 }

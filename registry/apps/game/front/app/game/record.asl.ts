@@ -5,7 +5,7 @@ export async function recordGame(game: Game) {
 
     const stream = game.renderer.canvas.captureStream();
     const [track] = stream.getVideoTracks();
-    
+
     const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
     mediaRecorder.ondataavailable = e => {
         if (e.data.size > 0) recordedChunks.push(e.data);
@@ -20,7 +20,7 @@ export async function recordGame(game: Game) {
         a.download = "recording.webm";
 
         document.body.appendChild(a);
-        a.click(); 
+        a.click();
 
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
@@ -34,7 +34,7 @@ export async function recordGame(game: Game) {
         //                     set canvas size n shit for render
         for (let i = 0; i < 100; i++) {
             game.tick(game.fixedDeltaTime);
-            game.update(game.fixedDeltaTime);
+            game.draw(game.fixedDeltaTime);
             (track as CanvasCaptureMediaStreamTrack).requestFrame();
             await new Promise(requestAnimationFrame);
         }
