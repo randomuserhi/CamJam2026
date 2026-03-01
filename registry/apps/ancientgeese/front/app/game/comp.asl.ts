@@ -25,10 +25,6 @@ interface GameComp {
     resize(): void;
 }
 
-export const comp = () => {
-    return html`<div m-id=""></div>`;
-}
-
 export const GameComp = html.wc(() => {
     const proto: object = GameComp.prototype;
     const comp = html(proto) <GameComp>`

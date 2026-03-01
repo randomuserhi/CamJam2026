@@ -1,0 +1,12 @@
+{
+    "front": {},
+    "back": {
+        "entry": "app/main.asl.js"
+    },
+    "dependencies": [
+        "rhu",
+        "vfs",
+        "common",
+        "hotreload"
+    ]
+}
