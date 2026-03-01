@@ -101,7 +101,7 @@ let inGame = false;
 
 export interface Stats {
     damageDealt: number;
-    statuesDestroyed: number;
+    statuesDestroyed: CRSID[];
 }
 
 app.route("GET", "/api/leaderboard", async (match, req, res) => {
