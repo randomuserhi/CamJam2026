@@ -2,6 +2,7 @@ package com.ancient_geese.scanner
 
 import android.app.PendingIntent
 import android.content.Intent
+import android.content.Context
 import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.os.Bundle
@@ -39,20 +40,26 @@ import java.net.Proxy
 import java.net.URL
 
 class MainActivity : ComponentActivity() {
+    companion object {
+        private const val PREFS_NAME = "scanner_prefs"
+        private const val KEY_SERVER_URL = "server_url"
+    }
+
     private var showServerUrlInput by mutableStateOf(false)
     private var serverUrl by mutableStateOf("")
-    private var showStartButton by mutableStateOf(false) // Change to your condition
 
     private var nfcAdapter: NfcAdapter? = null
     private lateinit var pendingIntent: PendingIntent
 
     private var userId: String? = null
-    private var statusMessage by mutableStateOf("Tap card to begin")
+    private var statusMessage by mutableStateOf("Scan server url")
 
     private val scanQrCodeLauncher = registerForActivityResult(ScanQRCode()) { result ->
         when (result) {
             is QRResult.QRSuccess -> {
                 serverUrl = result.content.rawValue?.trim().orEmpty()
+                persistServerUrl(serverUrl)
+                statusMessage = "Tap card to begin"
             }
             else -> Log.d("SCANNER", "ScanQRCode result was not a success")
         }
@@ -60,6 +67,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        serverUrl = loadServerUrl()
 
         nfcAdapter = NfcAdapter.getDefaultAdapter(this)
 
@@ -82,20 +91,6 @@ class MainActivity : ComponentActivity() {
                     ) {
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
                         Message(message = statusMessage)
-                        if (showStartButton) {
-                            androidx.compose.material3.Button(
-                                onClick = {
-                                    if (serverUrl.isBlank()) {
-                                        Toast.makeText(this@MainActivity, "Set a server URL first", Toast.LENGTH_SHORT).show()
-                                    } else {
-                                        register()
-                                    }
-                                },
-                                modifier = Modifier.padding(top = 8.dp)
-                            ) {
-                                androidx.compose.material3.Text("Register for game")
-                            }
-                        }
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
                         // Bottom content
                         androidx.compose.foundation.layout.Box(
@@ -107,7 +102,10 @@ class MainActivity : ComponentActivity() {
                             if (showServerUrlInput) {
                                 androidx.compose.material3.OutlinedTextField(
                                     value = serverUrl,
-                                    onValueChange = { serverUrl = it },
+                                    onValueChange = {
+                                        serverUrl = it
+                                        persistServerUrl(it)
+                                    },
                                     label = { androidx.compose.material3.Text("Server URL") },
                                     singleLine = true,
                                     modifier = Modifier
@@ -154,8 +152,13 @@ class MainActivity : ComponentActivity() {
                     statusMessage = "Reading tag..."
                     val result = extractUserID(it)
                     userId = result
-                    statusMessage = result ?: "Read failed: No data found"
-                    showStartButton = result != null
+                    if (result == null) {
+                        statusMessage = "Read failed: No data found"
+                    } else if (serverUrl.isBlank()) {
+                        Toast.makeText(this@MainActivity, "Set a server URL first", Toast.LENGTH_SHORT).show()
+                    } else {
+                        register()
+                    }
                 }
             }
         }
@@ -168,18 +171,24 @@ class MainActivity : ComponentActivity() {
                 return@launch
             }
             val encodedId = URLEncoder.encode(userId, "UTF-8")
-            val requestUrl = serverUrl.trimEnd('/') + "/game/start?id=$encodedId"
+            val requestUrl = serverUrl.trimEnd('/') + "/ancientgeese/api/start?id=$encodedId"
             try {
                 val connection = URL(requestUrl).openConnection() as HttpURLConnection
-                connection.requestMethod = "POST"
+                connection.requestMethod = "GET"
                 connection.connectTimeout = 3000
 
                 val responseCode = connection.responseCode
-                connection.disconnect()
                 val ok = responseCode in 200..299
+
+                val bodyText = (if (ok) connection.inputStream else connection.errorStream)
+                    ?.bufferedReader()
+                    ?.use { it.readText() }
+                    ?.trim()
+                    .orEmpty()
+
+                connection.disconnect()
                 withContext(Dispatchers.Main) {
-                    statusMessage = if (ok) "Registered" else "Register failed for ${userId}"
-                    showStartButton = !ok
+                    statusMessage = if (ok) "Registered ${userId}" else bodyText
                 }
             } catch (e: Exception) {
                 Log.e("SCANNER", "Register request error ${requestUrl}", e)
@@ -188,6 +197,19 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun persistServerUrl(value: String) {
+        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_SERVER_URL, value)
+            .apply()
+    }
+
+    private fun loadServerUrl(): String {
+        return getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(KEY_SERVER_URL, "")
+            .orEmpty()
     }
 }
 
