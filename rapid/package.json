@@ -27,6 +27,7 @@
     "@types/ws": "^8.18.1",
     "better-sqlite3": "^12.6.2",
     "chokidar": "^4.0.3",
+    "ldapts": "^8.1.7",
     "typescript": "^5.9.3",
     "ws": "^8.18.3"
   },

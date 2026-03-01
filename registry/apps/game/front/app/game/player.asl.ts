@@ -16,7 +16,7 @@ export class Player {
     private dodgeCooldownTimer = 0;
     private dodgeDuration = 0.45;
     private dodgeTimer = 0;
-    private dodgeDir: Vec2 = Vec2.right();
+    private facingDir: Vec2 = Vec2.right();
     private dodgeSpeed = 150;
     private dodgeCurve = Bezier(0.65, 0.1, 0.25, 1.0);
 
@@ -76,11 +76,11 @@ export class Player {
                 if (t < floor) t = floor;
                 speed = this.dodgeSpeed * this.dodgeCurve(t);
             }
-            Vec2.copy(Vec2.scale(this.dodgeDir, speed), this.velocity);
+            Vec2.copy(Vec2.scale(this.facingDir, speed), this.velocity);
             this.dodgeTimer -= dt;
         } else {
             if (Vec2.sqrdMagnitude(input.movement) != 0) {
-                Vec2.copy(input.movement, this.dodgeDir);
+                Vec2.copy(input.movement, this.facingDir);
             }
 
             // Movement
@@ -118,7 +118,7 @@ export class Player {
         } else {
             Vec2.copy(this.dodgeDir, projectile.dir);
         }*/
-        Vec2.copy(this.dodgeDir, projectile.dir);
+        Vec2.copy(this.facingDir, projectile.dir);
         projectile.speed = 500;
         projectile.timeAlive = 5;
         Vec2.set(5, 20, projectile.collider.size);
@@ -128,8 +128,8 @@ export class Player {
         audio.play()
     }
 
-    private quack(dt: number, input: InputState){
-        if (this.quackCooldownTimer > 0){
+    private quack(dt: number, input: InputState) {
+        if (this.quackCooldownTimer > 0) {
             this.quackCooldownTimer -= dt;
             return;
         }

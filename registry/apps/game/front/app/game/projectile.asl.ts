@@ -15,6 +15,8 @@ export class Projectile {
     private velocity: Vec2 = Vec2.zero();
 
     public tick(dt: number) {
+        if (this.timeAlive <= 0) return;
+        this.timeAlive -= dt;
         this.integrate(dt);
     }
 

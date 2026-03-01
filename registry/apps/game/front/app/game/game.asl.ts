@@ -20,8 +20,8 @@ export class GameState {
 export interface Environment {
     deadBodies: {
         position: Vec2,
-        isBroken: boolean,
-        name: string
+        name: string,
+        health: number
     }[];
 }
 
@@ -59,7 +59,16 @@ export class Game {
     public worldTimer = 0;
     public inputRecorder = new InputRecorder();
 
-    constructor(renderer: Renderer, inputProvider: InputProvider, rngSeed: number) {
+    public env: Environment;
+
+    public readonly playerName: string;
+
+    public falling: boolean = false;
+
+    public deadBodies: { collider: BoxCollider, info: Environment["deadBodies"][number] }[] = [];
+
+    constructor(playerName: string, renderer: Renderer, inputProvider: InputProvider, rngSeed: number, env?: Environment) {
+        this.playerName = playerName;
         this.renderer = renderer;
         this.camera = new Camera(renderer);
         this.inputProvider = inputProvider;
@@ -69,25 +78,46 @@ export class Game {
         // Init game state
         this.state = new GameState();
 
+        // Environment
+        this.env = env ?? {
+            deadBodies: []
+        };
+
+        // Generate dead bodies
+        for (const d of this.env.deadBodies) {
+            if (d.health <= 0) continue;
+            const collider = new BoxCollider();
+            Vec2.set(10, 10, collider.size);
+            Vec2.copy(d.position, collider.position);
+            this.deadBodies.push({ collider, info: d });
+        }
+
         // Bridge
         this.gapUpperBound = this.camera.size.y * 1 + this.camera.size.y / 2 - 10;
         this.gapLowerBound = this.camera.size.y * 1 + this.camera.size.y / 2 - 170;
         Vec2.set(0, this.camera.size.y * 1 + this.camera.size.y / 2 - 90, this.bridgePlatform.position);
         Vec2.set(100, 120, this.bridgePlatform.size);
-
-        Vec2.set(0, this.camera.size.y * 1, this.state.player.position);
     }
 
-    private levelEndTriggered = false;
+    private hasEnded = false;
     private levelEnd() {
-        if (this.levelEndTriggered) return;
-        this.levelEndTriggered = true;
+        if (this.hasEnded) return;
+        this.hasEnded = true;
 
         if (this.inputProvider instanceof ReplayController) return;
-        console.log(JSON.stringify({
+        if (!this.falling) {
+            this.env.deadBodies.push({
+                position: this.state.player.position,
+                name: this.playerName,
+                health: 5
+            });
+        }
+        const replay: Replay = {
             seed: this.rngSeed,
-            frames: this.inputRecorder.frames
-        }));
+            frames: this.inputRecorder.frames,
+            env: this.env
+        }
+        console.log(JSON.stringify(replay));
     }
 
     public tick(dt: number) {
@@ -112,16 +142,35 @@ export class Game {
         // Bridge gap
         {
             const onPlatform = isColliding(player.collider, this.bridgePlatform);
-            const falling = !onPlatform && player.position.y < this.gapUpperBound && player.position.y > this.gapLowerBound && !player.isDodging;
+            this.falling = !onPlatform && player.position.y < this.gapUpperBound && player.position.y > this.gapLowerBound && !player.isDodging;
 
-            if (!falling) {
+            if (!this.falling) {
                 player.tick(dt, inputState);
 
-                for (const p of playerProjectiles.buffer) {
-                    p.tick(dt);
+                // player, deadbody collision
+                for (const { collider, info } of this.deadBodies) {
+                    if (info.health <= 0) continue;
+                    const result = isColliding(player.collider, collider);
+                    if (!result) continue;
+                    Vec2.add(player.position, Vec2.scale(result.normal, result.penetrationDistance, result.normal), player.position);
                 }
             }
         }
+
+        for (const p of playerProjectiles.buffer) {
+            p.tick(dt);
+
+            for (const { collider, info } of this.deadBodies) {
+                if (info.health <= 0) continue;
+                const result = isColliding(p.collider, collider);
+                if (!result) continue;
+                p.timeAlive = 0;
+                info.health -= 1;
+            }
+
+            if (p.timeAlive > 0) playerProjectiles.push(p);
+        }
+        playerProjectiles.swap();
 
         // Borders
         {
@@ -162,9 +211,9 @@ export class Game {
         const ctx = this.renderer.ctx;
         const w = this.renderer.canvas.width;
         const hx = w / 2;
-        const h = this.renderer.canvas.width;
+        const h = this.renderer.canvas.height;
         const hy = h / 2;
-        ctx.clearRect(-hx, -hy, w, h);
+        ctx.clearRect(this.camera.position.x - hx, this.camera.position.y - hy, w, h);
 
         // Map
         {
@@ -240,6 +289,12 @@ export class Game {
             player.collider.draw(ctx, "rgb(0, 0, 255)");
             for (const p of playerProjectiles.buffer) {
                 p.collider.draw(ctx);
+            }
+
+            // Render deadbodies
+            for (const { collider, info } of this.deadBodies) {
+                if (info.health <= 0) continue;
+                collider.draw(ctx, "rgb(0, 0, 255)");
             }
         }
 

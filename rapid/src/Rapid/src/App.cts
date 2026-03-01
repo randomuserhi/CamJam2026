@@ -9,10 +9,9 @@ app.listen(PORT).then(() => {
 });
 
 
-/*
 import { Client } from "ldapts";
 (async () => {
-    const COLLECTED_ID = 'tl621'
+    const COLLECTED_ID = 'ceht2'
 
     const url = 'ldaps://ldap.lookup.cam.ac.uk';
     const bindDN = `ou=people,o=University of Cambridge,dc=cam,dc=ac,dc=uk`;
@@ -37,4 +36,3 @@ import { Client } from "ldapts";
         await client.unbind();
     }
 })()
-*/
