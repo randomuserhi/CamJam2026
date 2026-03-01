@@ -1,9 +1,11 @@
-import { CSRID } from "../crsid.asl";
 import { drawDuck, drawImage } from "../drawing.asl";
 import { Game } from "../game.asl";
 import { Bezier } from "../math/bezier.asl";
 import { Camera, Renderer } from "../renderer.asl";
 import { DuckBody, DuckHat, sprites } from "../sprites.asl";
+import { GameState } from "./savestate.asl";
+
+export const ws = new WebSocket(`ws://${window.location.host}/ancientgeese`);
 
 export class Menu {
     private camera: Camera;
@@ -22,6 +24,10 @@ export class Menu {
         this.camera = new Camera(this.renderer);
 
         this.enter();
+
+        ws.addEventListener("message", e => {
+            this.exit(JSON.parse(e.data));
+        }, { signal: __ASL.signal })
     }
 
     public enter() {
@@ -32,10 +38,12 @@ export class Menu {
         this.body = DuckBody[Math.floor(Math.random() * DuckBody.length)];
     }
 
-    public csrid?: CSRID = undefined;
+    public gameState?: GameState = undefined;
 
-    public exit(csrid: CSRID) {
-        this.csrid = csrid;
+    public exit(gameState: GameState) {
+        console.log(gameState);
+        this.game.mode = "Menu";
+        this.gameState = gameState;
         this.timer = 0;
         this.state = "Exit";
     }
@@ -129,8 +137,8 @@ export class Menu {
                 this.state = "Idle";
                 this.timer = 0;
 
-                if (this.csrid === undefined) throw new Error("Cannot enter without a csrid!");
-                this.game.gameplay.gameplayEnter.enter(this.csrid);
+                if (this.gameState === undefined) throw new Error("Cannot enter without a csrid!");
+                this.game.gameplay.gameplayEnter.enter(this.gameState);
             }
         }
 

@@ -14,7 +14,7 @@ import { sprites } from "../sprites.asl";
 import { Boss } from "./boss.asl";
 import { BASE_OFFSET as PLAYER_OFFSET, Player, PLAYER_SCALE } from "./player.asl";
 import { EnemyProjectile, Projectile } from "./projectile.asl";
-import { SaveState, SaveStateData } from "./savestate.asl";
+import { GameState } from "./savestate.asl";
 
 
 class GameplayState {
@@ -44,13 +44,13 @@ class GameplayEnter extends GameplayState {
     private state: "Enter" | "Welcome" | "ClassReveal" | "Exit" = "Enter";
     private timer: number = 0;
     private bobTimer: number = 0;
-    private crsid: CRSID | undefined = undefined;
+    private gameState: GameState | undefined = undefined;
 
-    public enter(crsid: CRSID) {
+    public enter(gameState: GameState) {
         this.gameplay.game.mode = "Gameplay";
         this.gameplay.state = "Enter";
-        this.gameplay.crsid = crsid;
-        this.crsid = this.gameplay.crsid;
+        this.gameplay.gameState = gameState;
+        this.gameState = this.gameplay.gameState;
 
         this.state = "Enter";
         this.timer = 0;
@@ -67,10 +67,11 @@ class GameplayEnter extends GameplayState {
     private duckExitCurve = Bezier(0.19, -0.01, 0.74, -0.05);
 
     public draw(time: number, dt: number) {
-        if (!this.crsid) throw new Error("No crsid!");
+        if (!this.gameState) throw new Error("No gameState!");
 
         const ctx = this.renderer.ctx;
         const camera = this.gameplay.camera;
+        const { crsid } = this.gameState;
 
         Vec2.zero(camera.position);
 
@@ -111,7 +112,7 @@ class GameplayEnter extends GameplayState {
 
             ctx.font = "25px INET";
             ctx.fillStyle = `rgba(255, 255, 255, ${t})`;
-            drawText(ctx, `Welcome ${this.crsid.name} of ${this.crsid.college}...`, 0, 75);
+            drawText(ctx, `Welcome ${crsid.name} of ${crsid.college}...`, 0, 75);
 
             if (this.timer > this.welcomeDuration) {
                 this.state = "ClassReveal";
@@ -122,16 +123,16 @@ class GameplayEnter extends GameplayState {
 
             ctx.font = "25px INET";
             ctx.fillStyle = `rgb(255, 255, 255)`;
-            drawText(ctx, `Welcome ${this.crsid.name} of ${this.crsid.college}...`, 0, 75);
+            drawText(ctx, `Welcome ${crsid.name} of ${crsid.college}...`, 0, 75);
 
             ctx.font = "25px INET";
             ctx.fillStyle = `rgba(255, 255, 255, ${t})`;
             drawText(ctx, `LORE LORE LORE!`, 0, -75);
-            drawText(ctx, `You are a ${this.crsid.classname}!`, 0, -100);
+            drawText(ctx, `You are a ${crsid.classname}!`, 0, -100);
 
             ctx.globalAlpha = t;
-            if (this.crsid.body !== "none") drawDuck(ctx, sprites.body[this.crsid.body], time, bobIdx, 0, bobY, 2);
-            if (this.crsid.hat !== "none") drawDuck(ctx, sprites.hat[this.crsid.hat], time, bobIdx, 0, bobY, 2);
+            if (crsid.body !== "none") drawDuck(ctx, sprites.body[crsid.body], time, bobIdx, 0, bobY, 2);
+            if (crsid.hat !== "none") drawDuck(ctx, sprites.hat[crsid.hat], time, bobIdx, 0, bobY, 2);
             ctx.globalAlpha = 1;
 
             if (this.timer > this.classDuration) {
@@ -143,29 +144,29 @@ class GameplayEnter extends GameplayState {
 
             ctx.font = "25px INET";
             ctx.fillStyle = `rgba(255, 255, 255, ${1 - t})`;
-            drawText(ctx, `Welcome ${this.crsid.name} of ${this.crsid.college}...`, 0, 75);
+            drawText(ctx, `Welcome ${crsid.name} of ${crsid.college}...`, 0, 75);
 
             ctx.font = "25px INET";
             ctx.fillStyle = `rgba(255, 255, 255, ${1 - t})`;
             drawText(ctx, `LORE LORE LORE!`, 0, -75);
-            drawText(ctx, `You are a ${this.crsid.classname}!`, 0, -100);
+            drawText(ctx, `You are a ${crsid.classname}!`, 0, -100);
 
             // Animated duck
             let idx = Math.floor((time * 2) % 4);
             const y = - this.duckExitCurve(t) * 300;
             drawDuck(ctx, sprites.duck, time, idx, 0, y, 2);
-            if (this.crsid.body !== "none") drawDuck(ctx, sprites.body[this.crsid.body], time, idx, 0, y, 2);
-            if (this.crsid.hat !== "none") drawDuck(ctx, sprites.hat[this.crsid.hat], time, idx, 0, y, 2);
+            if (crsid.body !== "none") drawDuck(ctx, sprites.body[crsid.body], time, idx, 0, y, 2);
+            if (crsid.hat !== "none") drawDuck(ctx, sprites.hat[crsid.hat], time, idx, 0, y, 2);
 
             if (this.timer > this.exitDuration) {
-                this.gameplay.gameplayPlay.enter(new SaveState(Math.floor(Math.random() * 100000), this.crsid));
+                this.gameplay.gameplayPlay.enter(this.gameState);
             }
         }
     }
 }
 
 export class GameplayPlay extends GameplayState {
-    private saveState: SaveState | undefined = undefined;
+    private gameState: GameState | undefined = undefined;
     private inputProvider: InputProvider = undefined!;
     private inputRecorder: InputRecorder = undefined!;
 
@@ -177,17 +178,17 @@ export class GameplayPlay extends GameplayState {
 
     public rand: () => number = undefined!;
 
-    public enter(state: SaveState): void {
+    public enter(gameState: GameState): void {
         this.gameplay.game.mode = "Gameplay";
-        this.gameplay.crsid = state.data.crsid;
+        this.gameplay.gameState = gameState;
         this.gameplay.state = "Play";
-        this.saveState = state;
-        this.inputProvider = this.saveState.data.frames ? new ReplayController(this.saveState.data.frames) : new ControllerInput();
+        this.gameState = gameState;
+        this.inputProvider = this.gameState.frames ? new ReplayController(this.gameState.frames) : new ControllerInput();
         this.inputRecorder = new InputRecorder();
 
-        state.data.deadBodies.sort((a, b) => b.position.y - a.position.y);
+        gameState.deadBodies.sort((a, b) => b.position.y - a.position.y);
 
-        this.rand = xor(state.data.rngSeed);
+        this.rand = xor(gameState.rngSeed);
 
         this.state = "Enter";
         this.timer = 0;
@@ -200,7 +201,7 @@ export class GameplayPlay extends GameplayState {
         this.enemyProjectiles.clear();
         this.deadBodyObstructions.clear();
 
-        for (const d of state.data.deadBodies) {
+        for (const d of gameState.deadBodies) {
             if (d.isBroken) continue;
 
             const collider = new BoxCollider();
@@ -307,7 +308,7 @@ export class GameplayPlay extends GameplayState {
 
     obstructions: BoxCollider[] = [];
 
-    deadBodyObstructions: DoubleBuffer<{ collider: BoxCollider, hurtbox: BoxCollider, ref: SaveStateData["deadBodies"][number] }> = new DoubleBuffer();
+    deadBodyObstructions: DoubleBuffer<{ collider: BoxCollider, hurtbox: BoxCollider, ref: GameState["deadBodies"][number] }> = new DoubleBuffer();
 
     playerProjectiles: DoubleBuffer<Projectile> = new DoubleBuffer();
 
@@ -316,7 +317,7 @@ export class GameplayPlay extends GameplayState {
     timeInFight = 0;
 
     public tick(dt: number) {
-        if (this.saveState === undefined) throw new Error("No game state!");
+        if (this.gameState === undefined) throw new Error("No game state!");
         if (this.state !== "Idle" && this.state !== "Fight") return;
 
         ++this.tickIdx;
@@ -382,7 +383,7 @@ export class GameplayPlay extends GameplayState {
                 if (isColliding(p.collider, this.boss.hurtbox)) {
                     p.timeAlive = 0;
                     // TODO: hit effect
-                    this.saveState.data.bossHealth -= p.damage;
+                    this.gameState.bossHealth -= p.damage;
                 } else {
                     // dead body collision
                     for (const { hurtbox, ref } of this.deadBodyObstructions.buffer) {
@@ -473,7 +474,7 @@ export class GameplayPlay extends GameplayState {
 
         // Fight state
         if (!player.isFalling) {
-            player.shooting(dt, inputState, this.saveState.data.crsid, this.playerProjectiles, this.rand);
+            player.shooting(dt, inputState, this.gameState.crsid, this.playerProjectiles, this.rand);
         }
         for (const p of this.playerProjectiles.buffer) {
             p.tick(dt);
@@ -543,9 +544,9 @@ export class GameplayPlay extends GameplayState {
     private boss: Boss = new Boss();
 
     public draw(time: number, dt: number) {
-        if (!this.saveState) throw new Error("No gameplay save state!");
+        if (!this.gameState) throw new Error("No gameplay save state!");
 
-        const { crsid } = this.saveState.data;
+        const { crsid } = this.gameState;
 
         const ctx = this.renderer.ctx;
         const camera = this.gameplay.camera;
@@ -579,7 +580,7 @@ export class GameplayPlay extends GameplayState {
         this.enemyProjectiles.buffer.sort((a, b) => b.position.y - a.position.y);
 
         let deadBodyIdx = 0;
-        const deadBodies = this.saveState.data.deadBodies;
+        const deadBodies = this.gameState.deadBodies;
 
         while (playerProjIdx < this.playerProjectiles.buffer.length) {
             if (this.playerProjectiles.buffer[playerProjIdx].position.y < this.boss.position.y ||
@@ -865,7 +866,7 @@ export class GameplayPlay extends GameplayState {
         this.boss.draw(time, dt, ctx);
     }
 
-    private drawDeadBody(time: number, dt: number, ctx: CanvasRenderingContext2D, deadBody: SaveStateData["deadBodies"][number]) {
+    private drawDeadBody(time: number, dt: number, ctx: CanvasRenderingContext2D, deadBody: GameState["deadBodies"][number]) {
         time = deadBody.isBroken ? 0.99 : 0;
         drawStatue(ctx, time, deadBody.idx, deadBody.position.x, deadBody.position.y + PLAYER_OFFSET, PLAYER_SCALE);
         if (deadBody.isBroken) return;
@@ -931,32 +932,42 @@ export class GameplayPlay extends GameplayState {
     loseDuration = 1;
     exitDuration = 1;
     public lose(to: "Exit" | "Lose") {
-        if (this.saveState === undefined) throw new Error("No save state!");
+        if (this.gameState === undefined) throw new Error("No save state!");
 
         this.state = "Lose";
         this.timer = 0;
 
         if (to === "Exit") {
+            // TODO, add some stat object containing stats like damage done etc...
+            //       to pass to gameplayExit and to api/finish req
             if (this.inputProvider instanceof ControllerInput) {
-                this.saveState.data.frames = this.inputRecorder.frames;
-                const replay = JSON.stringify(this.saveState.data);
+                this.gameState.frames = this.inputRecorder.frames;
+                const replay = JSON.stringify(this.gameState);
 
-                this.saveState.data.frames = undefined;
-                this.saveState.data.deadBodies.push({
-                    crsid: this.saveState.data.crsid,
-                    idx: this.player.idx,
-                    isBroken: false,
-                    position: Vec2.copy(this.player.position),
-                    health: 5,
+                this.gameState.frames = undefined;
+                if (!this.player.isFalling) {
+                    this.gameState.deadBodies.push({
+                        crsid: this.gameState.crsid,
+                        idx: this.player.idx,
+                        isBroken: false,
+                        position: Vec2.copy(this.player.position),
+                        health: 5,
+                    });
+                }
+                const nextState = JSON.stringify(this.gameState);
+
+                fetch("/ancientgeese/api/finish", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        replay,
+                        nextState
+                    })
                 });
-                const nextState = JSON.stringify(this.saveState.data);
-
-                // TODO, send replay and nextState to server
-                console.log(replay);
+                this.gameplay.gameplayExit.enter(this.gameState);
+            } else {
+                this.gameplay.gameplayExit.enter(this.gameState);
             }
 
-            // TODO, add some stat object containing stats like damage done etc...
-            this.gameplay.gameplayExit.enter(this.saveState.data.crsid);
         }
     }
 }
@@ -972,11 +983,11 @@ class GameplayExit extends GameplayState {
     private bobTimer: number = 0;
     private crsid: CRSID | undefined = undefined;
 
-    public enter(crsid: CRSID) {
+    public enter(gameState: GameState) {
         this.gameplay.game.mode = "Gameplay";
         this.gameplay.state = "Exit"
-        this.gameplay.crsid = crsid;
-        this.crsid = this.gameplay.crsid;
+        this.gameplay.gameState = gameState;
+        this.crsid = this.gameplay.gameState.crsid;
 
         Vec2.zero(this.gameplay.camera.position);
 
@@ -1103,7 +1114,7 @@ export class Gameplay {
     public gameplayPlay: GameplayPlay;
     public gameplayExit: GameplayExit;
 
-    public crsid: CRSID | undefined = undefined;
+    public gameState: GameState | undefined = undefined;
 
     constructor(game: Game, renderer: Renderer) {
         this.game = game;
