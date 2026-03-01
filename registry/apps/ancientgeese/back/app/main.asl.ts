@@ -249,9 +249,11 @@ app.route("GET", "/api/start", async (match, req, res, url) => {
 
         let hat: DuckHat = "none";
         let college: string = "UNKNOWN";
+
+        let ou = typeof result.ou === "string" ? [result.ou] : result.ou;
         for (let i = 0; i < hatTerms.length; ++i) {
             const includes = hatTerms[i];
-            for (const term of result.ou) {
+            for (const term of ou) {
                 const str = `${term}`.toLowerCase();
                 for (const inc of includes) {
                     if (str.includes(inc.toLowerCase())) {
