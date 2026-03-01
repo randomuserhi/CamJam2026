@@ -5,6 +5,11 @@ import { GameComp } from "./game/comp.asl";
 // Load math extensions statically
 await __ASL.require("./game/math/ext.asl");
 
+export const ws = new WebSocket(`ws://${window.location.host}/ancientgeese`);
+ws.addEventListener("message", e => {
+    console.log(e);
+})
+
 const style = Style(({ css }) => {
     const wrapper = css.style`
     width: 100%;

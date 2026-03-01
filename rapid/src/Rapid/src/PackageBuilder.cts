@@ -251,7 +251,7 @@ export class PackageInfo {
                 cache.mtimeMs = configStat.mtimeMs;
             }
         }
-        
+
         return cache.config!;
     }
 
@@ -278,7 +278,7 @@ export class PackageInfo {
                 cache.mtimeMs = configStat.mtimeMs;
             }
         }
-        
+
         return cache.config!;
     }
 
@@ -342,7 +342,7 @@ async function generateInternalRepo(
     options: {
         pckg: PackageInfo,
         typeDir: string,
-        
+
         /** Name of internal repo */
         name: "back" | "flex" | "front",
 
@@ -351,7 +351,7 @@ async function generateInternalRepo(
 
         /** Package dependencies */
         additionalDependencies: PackageInfo[],
-        
+
         /** What base libraries and types should the repo use */
         lib?: string[],
         types?: string[],
@@ -370,7 +370,7 @@ async function generateInternalRepo(
             /** Merges this variant with another repo. You can specify which variants are shared (both must support the given variant) */
             additionalReferences: { name: "back" | "flex" | "front", variants: string[] }[],
         }>
-        
+
         createFolder: boolean,
     }) {
     const {
@@ -391,7 +391,7 @@ async function generateInternalRepo(
     const tsConfigDir = Path.join(pckg.TsconfigDir, name);
 
     const writeJobs: Promise<void>[] = [];
-    
+
 
     // make type paths relative
     if (types !== undefined) {
@@ -593,7 +593,7 @@ async function initPackage(registry: PackageRegistry, info: PackageInfo, typeDir
             }
         }
     }
-    
+
     let job = initJobs.get(info.configPath);
     if (job === undefined) {
         // Get the package config
@@ -609,11 +609,11 @@ async function initPackage(registry: PackageRegistry, info: PackageInfo, typeDir
         const dependencies: PackageInfo[] = [];
         if (config.dependencies !== undefined) {
             const jobs: Promise<void>[] = [];
-    
+
             for (const dependency of config.dependencies) {
-            // Skip dependency on self, this is implicit
+                // Skip dependency on self, this is implicit
                 if (dependency === info.name) continue;
-    
+
                 jobs.push(registry.findPckg(dependency)
                     .then(info => {
                         if (info !== undefined) {
@@ -622,7 +622,7 @@ async function initPackage(registry: PackageRegistry, info: PackageInfo, typeDir
                     })
                 );
             }
-    
+
             await Promise.all(jobs);
         }
 
@@ -630,15 +630,15 @@ async function initPackage(registry: PackageRegistry, info: PackageInfo, typeDir
             // Initialize dependencies
             // TODO(randomuserhi): Discover circular dependencies and early exit them / throw an error
             const jobs: Promise<void>[] = [];
-    
+
             for (const dependency of dependencies) {
-                jobs.push(initPackage(registry, dependency, typeDir, { 
+                jobs.push(initPackage(registry, dependency, typeDir, {
                     initDependencies: true,
                     force: parsedOptions.force,
                     forceSelf: false
                 }));
             }
-    
+
             await Promise.all(jobs);
         }
 
@@ -657,23 +657,23 @@ async function initPackage(registry: PackageRegistry, info: PackageInfo, typeDir
             };
             // Add sub-repos as reference for typescript to build them as required
             if (config.back !== undefined) {
-            tsconfig.references!.push({ path: relPath(info.baseDir, Path.join(info.TsconfigDir, RAPID_BACK_DIRNAME, `tsconfig${ASL_EXTENSION_TS}.json`)) });
-            tsconfig.references!.push({ path: relPath(info.baseDir, Path.join(info.TsconfigDir, RAPID_BACK_DIRNAME, "tsconfig.cts.json")) });
-            tsconfig.references!.push({ path: relPath(info.baseDir, Path.join(info.TsconfigDir, RAPID_BACK_DIRNAME, "tsconfig.mts.json")) });
+                tsconfig.references!.push({ path: relPath(info.baseDir, Path.join(info.TsconfigDir, RAPID_BACK_DIRNAME, `tsconfig${ASL_EXTENSION_TS}.json`)) });
+                tsconfig.references!.push({ path: relPath(info.baseDir, Path.join(info.TsconfigDir, RAPID_BACK_DIRNAME, "tsconfig.cts.json")) });
+                tsconfig.references!.push({ path: relPath(info.baseDir, Path.join(info.TsconfigDir, RAPID_BACK_DIRNAME, "tsconfig.mts.json")) });
             }
             if (config.front !== undefined) {
-            tsconfig.references!.push({ path: relPath(info.baseDir, Path.join(info.TsconfigDir, RAPID_FRONT_DIRNAME, `tsconfig${ASL_EXTENSION_TS}.json`)) });
-            tsconfig.references!.push({ path: relPath(info.baseDir, Path.join(info.TsconfigDir, RAPID_FRONT_DIRNAME, "tsconfig.mts.json")) });
+                tsconfig.references!.push({ path: relPath(info.baseDir, Path.join(info.TsconfigDir, RAPID_FRONT_DIRNAME, `tsconfig${ASL_EXTENSION_TS}.json`)) });
+                tsconfig.references!.push({ path: relPath(info.baseDir, Path.join(info.TsconfigDir, RAPID_FRONT_DIRNAME, "tsconfig.mts.json")) });
             }
             if (config.flex !== undefined) {
-            tsconfig.references!.push({ path: relPath(info.baseDir, Path.join(info.TsconfigDir, RAPID_FLEX_DIRNAME, `tsconfig${ASL_EXTENSION_TS}.json`)) });
+                tsconfig.references!.push({ path: relPath(info.baseDir, Path.join(info.TsconfigDir, RAPID_FLEX_DIRNAME, `tsconfig${ASL_EXTENSION_TS}.json`)) });
             }
             await File.writeFile(tsconfigPath, JSON.stringify(tsconfig, null, 2));
-    
+
             // Generate config folder which holds all auto-generated configs for each sub-repo
             const tsconfigDir = info.TsconfigDir;
             await File.mkdir(tsconfigDir, { recursive: true });
-    
+
             // Generate base config if it doesn't exist
             // This contains optional typescript settings the user can configure
             const tsconfigBasePath = Path.join(tsconfigDir, "tsconfig.base.json");
@@ -694,7 +694,7 @@ async function initPackage(registry: PackageRegistry, info: PackageInfo, typeDir
                         inlineSources: true
                     }
                 };
-    
+
                 await File.writeFile(tsconfigBasePath, JSON.stringify(tsconfigBase, null, 2));
             }
 
@@ -734,6 +734,7 @@ async function initPackage(registry: PackageRegistry, info: PackageInfo, typeDir
                     standardLibPaths: {
                         "typescript": "typescript/typescript.d.ts",
                         "chokidar": "chokidar/index.d.ts",
+                        "ldapts": "ldapts/index.d.ts",
                         "ws": "ws/index.d.ts",
                         "better-sqlite3": "better-sqlite3/index.d.ts"
                     },
@@ -749,10 +750,10 @@ async function initPackage(registry: PackageRegistry, info: PackageInfo, typeDir
                             types: [
                                 Path.join(typeDir, "asl"),
                             ],
-                            additionalIncludes: [ "flex" ],
+                            additionalIncludes: ["flex"],
                             additionalReferences: [
-                                { name: "back", variants: [ ".cts", ".mts" ] },
-                                { name: "flex", variants: [ ASL_EXTENSION_TS ] }
+                                { name: "back", variants: [".cts", ".mts"] },
+                                { name: "flex", variants: [ASL_EXTENSION_TS] }
                             ]
                         },
                         ".cts": {
@@ -788,10 +789,10 @@ async function initPackage(registry: PackageRegistry, info: PackageInfo, typeDir
                             types: [
                                 Path.join(typeDir, "asl"),
                             ],
-                            additionalIncludes: [ "flex" ],
+                            additionalIncludes: ["flex"],
                             additionalReferences: [
-                                { name: "front", variants: [ ".mts" ] },
-                                { name: "flex", variants: [ ASL_EXTENSION_TS ] }
+                                { name: "front", variants: [".mts"] },
+                                { name: "flex", variants: [ASL_EXTENSION_TS] }
                             ]
                         },
                         ".mts": {
@@ -859,66 +860,66 @@ interface ASLBuilder {
 function tsWriteFileOverride(this: ASLBuilder, origWriteFile: ((fileName: string, code: string, writeByteOrderMark?: boolean) => void) | undefined, fileName: string, code: string, writeByteOrderMark?: boolean) {
     const ext = ASLPath.extname(fileName);
     switch (ext) {
-    // Only treat certain output files as ASL scripts
-    case ASL_EXTENSION_JS_MAP:
-    case ASL_EXTENSION_JS: {
-        // Only write file once both sourcemap and code is generated
-        // This is so that babel can remap the code as well
-        let mapCode: string | undefined;
-        let jsCode: string | undefined;
-        let fileKey: string;
+        // Only treat certain output files as ASL scripts
+        case ASL_EXTENSION_JS_MAP:
+        case ASL_EXTENSION_JS: {
+            // Only write file once both sourcemap and code is generated
+            // This is so that babel can remap the code as well
+            let mapCode: string | undefined;
+            let jsCode: string | undefined;
+            let fileKey: string;
 
-        if (ext === ASL_EXTENSION_JS_MAP) {
-            fileKey = fileName.slice(0, -4);
-            mapCode = code;
-            jsCode = this.ASLObjects.get(fileKey);
-        } else {
-            fileKey = fileName;
-            mapCode = this.ASLObjects.get(fileKey);
-            jsCode = code;
-        }
+            if (ext === ASL_EXTENSION_JS_MAP) {
+                fileKey = fileName.slice(0, -4);
+                mapCode = code;
+                jsCode = this.ASLObjects.get(fileKey);
+            } else {
+                fileKey = fileName;
+                mapCode = this.ASLObjects.get(fileKey);
+                jsCode = code;
+            }
 
-        if (mapCode === undefined) {
-            this.ASLObjects.set(fileKey, jsCode!);
-            return;
-        } else if (jsCode === undefined) {
-            this.ASLObjects.set(fileKey, mapCode!);
-            return;
-        }
+            if (mapCode === undefined) {
+                this.ASLObjects.set(fileKey, jsCode!);
+                return;
+            } else if (jsCode === undefined) {
+                this.ASLObjects.set(fileKey, mapCode!);
+                return;
+            }
 
-        // Perform transpilation
-        const babelResult = transform(jsCode, {
-            ...ASLBabelConfig,
-            sourceMaps: true,
-            inputSourceMap: JSON.parse(mapCode)
-        });
-        if (!babelResult || !babelResult.code || !babelResult.map) {
-            // Error in transpilation, skip
-            // TODO(randomuserhi): Better error message.
-            this.ASLTranspilationResults.push(new Result(undefined, new Error("Babel Failed")));
-            return;
-        }
+            // Perform transpilation
+            const babelResult = transform(jsCode, {
+                ...ASLBabelConfig,
+                sourceMaps: true,
+                inputSourceMap: JSON.parse(mapCode)
+            });
+            if (!babelResult || !babelResult.code || !babelResult.map) {
+                // Error in transpilation, skip
+                // TODO(randomuserhi): Better error message.
+                this.ASLTranspilationResults.push(new Result(undefined, new Error("Babel Failed")));
+                return;
+            }
 
-        // Strip source mapping comment
-        babelResult.code = babelResult.code.replace(/\/\/# sourceMappingURL=.*$/gm, "");
+            // Strip source mapping comment
+            babelResult.code = babelResult.code.replace(/\/\/# sourceMappingURL=.*$/gm, "");
 
-        // Write file as normal, with transpiled code
-        origWriteFile?.(fileKey, babelResult.code, writeByteOrderMark);
+            // Write file as normal, with transpiled code
+            origWriteFile?.(fileKey, babelResult.code, writeByteOrderMark);
 
-        // Insert offset to mapping (All ASL scripts have a fixed offset due to how the script is generated via `Function` eval
-        babelResult.map.mappings = ";;;" + babelResult.map.mappings;
+            // Insert offset to mapping (All ASL scripts have a fixed offset due to how the script is generated via `Function` eval
+            babelResult.map.mappings = ";;;" + babelResult.map.mappings;
 
-        // Write transformed source map
-        origWriteFile?.(`${fileKey}.map`, JSON.stringify(babelResult.map), writeByteOrderMark);
+            // Write transformed source map
+            origWriteFile?.(`${fileKey}.map`, JSON.stringify(babelResult.map), writeByteOrderMark);
 
-        // Push successful transpilation
-        this.ASLTranspilationResults.push(new Result(fileKey));
-    } break;
+            // Push successful transpilation
+            this.ASLTranspilationResults.push(new Result(fileKey));
+        } break;
 
         // Treat other files as normal
-    default: {
-        origWriteFile?.(fileName, code, writeByteOrderMark);
-    } break;
+        default: {
+            origWriteFile?.(fileName, code, writeByteOrderMark);
+        } break;
     }
 }
 

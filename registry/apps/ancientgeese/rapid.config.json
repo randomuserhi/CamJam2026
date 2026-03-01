@@ -6,7 +6,7 @@
     "dependencies": [
         "rhu",
         "vfs",
-        "hotreload",
-        "common"
+        "common",
+        "hotreload"
     ]
 }
