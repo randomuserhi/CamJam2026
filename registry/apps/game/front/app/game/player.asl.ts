@@ -23,6 +23,9 @@ export class Player {
     private quackCooldown = 0.00;
     private quackCooldownTimer = 0;
 
+    private waddleCooldown = 0.3;
+    private waddleCooldownTimer = 0;
+
     public position: Vec2 = Vec2.zero();
 
     private velocity: Vec2 = Vec2.zero();
@@ -63,6 +66,23 @@ export class Player {
     }
 
     private movement(dt: number, input: InputState) {
+        var playWaddleSound = true;
+        if (this.waddleCooldownTimer > 0){
+            this.waddleCooldownTimer -= dt;
+            playWaddleSound = false;
+        }
+
+        if (Math.abs(input.movement.x) < 0.01 && Math.abs(input.movement.y) < 0.01) // isnt moving
+            playWaddleSound = false;
+
+        if (playWaddleSound){
+            this.waddleCooldownTimer = this.waddleCooldown;
+
+            const audio = new Audio("/game/assets/audio/waddle3.wav");
+            audio.play()           
+        }
+        
+
         if (this.isDodging) {
             const _t = this.dodgeTimer / this.dodgeDuration;
             let speed = 1;
