@@ -237,6 +237,40 @@ const hatTerms = [
     ]
 ];
 
+function countQuacks() {
+    const out: { [key:string] : number } = {};
+    for (const [id, value] of Object.entries(crsidMap)) {
+        const state: GameState = JSON.parse(value.replay);
+        let count = 0;
+        let previousQuack = false;
+        for (const frame of state.frames!) {
+            if (frame.state.quack && !previousQuack) {
+                count++;
+                previousQuack = true;
+            } else {
+                previousQuack = false;
+            }
+        }
+        out[id] = count;
+    }
+    return out;
+}
+
+function playersWithZeroDamage() {
+    const out: CRSID[] = [];
+    for (const value of Object.values(crsidMap)) {
+        const state: GameState = JSON.parse(value.replay);
+        if (value.stats.damageDealt == 0) {
+            out.push(state.crsid);
+        }
+    }
+    return out;
+}
+
+function playerCount() {
+    return Object.entries(crsidMap).length;
+}
+
 app.route("GET", "/api/start", async (match, req, res, url) => {
     if (inGame || !url.searchParams.has("id")) {
         res.statusCode = 500;
