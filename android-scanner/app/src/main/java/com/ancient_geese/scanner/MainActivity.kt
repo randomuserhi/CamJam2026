@@ -41,7 +41,6 @@ import java.net.URL
 class MainActivity : ComponentActivity() {
     private var showServerUrlInput by mutableStateOf(false)
     private var serverUrl by mutableStateOf("")
-    private var showStartButton by mutableStateOf(false) // Change to your condition
 
     private var nfcAdapter: NfcAdapter? = null
     private lateinit var pendingIntent: PendingIntent
@@ -82,20 +81,6 @@ class MainActivity : ComponentActivity() {
                     ) {
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
                         Message(message = statusMessage)
-                        if (showStartButton) {
-                            androidx.compose.material3.Button(
-                                onClick = {
-                                    if (serverUrl.isBlank()) {
-                                        Toast.makeText(this@MainActivity, "Set a server URL first", Toast.LENGTH_SHORT).show()
-                                    } else {
-                                        register()
-                                    }
-                                },
-                                modifier = Modifier.padding(top = 8.dp)
-                            ) {
-                                androidx.compose.material3.Text("Register for game")
-                            }
-                        }
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
                         // Bottom content
                         androidx.compose.foundation.layout.Box(
@@ -154,8 +139,13 @@ class MainActivity : ComponentActivity() {
                     statusMessage = "Reading tag..."
                     val result = extractUserID(it)
                     userId = result
-                    statusMessage = result ?: "Read failed: No data found"
-                    showStartButton = result != null
+                    if (result == null) {
+                        statusMessage = "Read failed: No data found"
+                    } else if (serverUrl.isBlank()) {
+                        Toast.makeText(this@MainActivity, "Set a server URL first", Toast.LENGTH_SHORT).show()
+                    } else {
+                        register()
+                    }
                 }
             }
         }
@@ -175,11 +165,17 @@ class MainActivity : ComponentActivity() {
                 connection.connectTimeout = 3000
 
                 val responseCode = connection.responseCode
-                connection.disconnect()
                 val ok = responseCode in 200..299
+
+                val bodyText = (if (ok) connection.inputStream else connection.errorStream)
+                    ?.bufferedReader()
+                    ?.use { it.readText() }
+                    ?.trim()
+                    .orEmpty()
+
+                connection.disconnect()
                 withContext(Dispatchers.Main) {
-                    statusMessage = if (ok) "Registered" else "Register failed for ${userId}"
-                    showStartButton = !ok
+                    statusMessage = if (ok) "Registered ${userId}" else bodyText
                 }
             } catch (e: Exception) {
                 Log.e("SCANNER", "Register request error ${requestUrl}", e)
