@@ -334,6 +334,31 @@ export const sprites = {
         projectiles: {
             orb: await loadImage("/ancientgeese/assets/boss/projectiles/orb.png"),
         }
+    },
+    effects: {
+        explosion: new Anim([
+            await loadImage("/ancientgeese/assets/fx/explosion/explosion1.png"),
+            await loadImage("/ancientgeese/assets/fx/explosion/explosion2.png"),
+            await loadImage("/ancientgeese/assets/fx/explosion/explosion3.png"),
+            await loadImage("/ancientgeese/assets/fx/explosion/explosion4.png"),
+            await loadImage("/ancientgeese/assets/fx/explosion/explosion5.png"),
+            await loadImage("/ancientgeese/assets/fx/explosion/explosion6.png"),
+        ], 0.5),
+        leaf: new Anim([
+            await loadImage("/ancientgeese/assets/fx/leaf/leaf1.png"),
+            await loadImage("/ancientgeese/assets/fx/leaf/leaf2.png"),
+            await loadImage("/ancientgeese/assets/fx/leaf/leaf3.png"),
+            await loadImage("/ancientgeese/assets/fx/leaf/leaf4.png"),
+            await loadImage("/ancientgeese/assets/fx/leaf/leaf5.png"),
+            await loadImage("/ancientgeese/assets/fx/leaf/leaf6.png"),
+        ], 0.5),
+        slash: new Anim([
+            await loadImage("/ancientgeese/assets/fx/slash/slash1.png"),
+            await loadImage("/ancientgeese/assets/fx/slash/slash2.png"),
+            await loadImage("/ancientgeese/assets/fx/slash/slash3.png"),
+            await loadImage("/ancientgeese/assets/fx/slash/slash4.png"),
+            await loadImage("/ancientgeese/assets/fx/slash/slash5.png"),
+        ], 0.5),
     }
 } as const;
 

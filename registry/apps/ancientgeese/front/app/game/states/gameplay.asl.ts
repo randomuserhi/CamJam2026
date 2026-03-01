@@ -403,16 +403,16 @@ export class GameplayPlay extends GameplayState {
                     let e: ParticleEffect | undefined = undefined;
                     switch (this.gameState.crsid.classname) {
                         case "Herbalist":
-                            e = new ParticleEffect(sprites.fx.leaf);
+                            e = new ParticleEffect(sprites.effects.leaf);
                             break;
                         case "Warrior":
-                            e = new ParticleEffect(sprites.fx.slash);
+                            e = new ParticleEffect(sprites.effects.slash);
                             break;
                         case "Wizard":
-                            e = new ParticleEffect(sprites.fx.explosion);
+                            e = new ParticleEffect(sprites.effects.explosion);
                             break;
                         case "Jacket":
-                            e = new ParticleEffect(sprites.fx.leaf);
+                            e = new ParticleEffect(sprites.effects.leaf);
                             break;
                     }
                     if (e) Vec2.copy(p.position, e.position);
@@ -460,14 +460,14 @@ export class GameplayPlay extends GameplayState {
                         this.end("Lose");
                         return;
                     }
-                    const e = new ParticleEffect(sprites.fx.slash);
+                    const e = new ParticleEffect(sprites.effects.slash);
                     Vec2.copy(p.position, e.position);
                 } else {
                     // dead body collision
                     for (const { hurtbox, ref } of this.deadBodyObstructions.buffer) {
                         if (isColliding(p.collider, hurtbox)) {
                             p.timeAlive = 0;
-                            const e = new ParticleEffect(sprites.fx.slash);
+                            const e = new ParticleEffect(sprites.effects.slash);
                             Vec2.copy(p.position, e.position);
                         }
                     }
