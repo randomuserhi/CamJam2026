@@ -16,6 +16,7 @@ import { ParticleEffect, tickAllEffects } from "./effect.asl";
 import { BASE_OFFSET as PLAYER_OFFSET, Player, PLAYER_SCALE } from "./player.asl";
 import { EnemyProjectile, Projectile } from "./projectile.asl";
 import { GameState } from "./savestate.asl";
+import { createStat as blankStats, Stats } from "./stats.asl";
 
 
 class GameplayState {
@@ -116,7 +117,8 @@ class GameplayEnter extends GameplayState {
 
             ctx.font = "25px INET";
             ctx.fillStyle = `rgba(255, 255, 255, ${t})`;
-            drawText(ctx, `Welcome ${crsid.name} of ${crsid.college}...`, 0, 75);
+            ctx.textAlign = "center";
+            drawText(ctx, `Welcome ${crsid.name} of ${crsid.college}`, 0, 75);
 
             if (this.timer > this.welcomeDuration) {
                 this.state = "ClassReveal";
@@ -133,12 +135,13 @@ class GameplayEnter extends GameplayState {
 
             ctx.font = "25px INET";
             ctx.fillStyle = `rgb(255, 255, 255)`;
-            drawText(ctx, `Welcome ${crsid.name} of ${crsid.college}...`, 0, 75);
+            ctx.textAlign = "center";
+            drawText(ctx, `Welcome ${crsid.name} of ${crsid.college}`, 0, 75);
 
             ctx.font = "25px INET";
             ctx.fillStyle = `rgba(255, 255, 255, ${t})`;
-            drawText(ctx, `LORE LORE LORE!`, 0, -75);
-            drawText(ctx, `You are a ${crsid.classname}!`, 0, -100);
+            ctx.textAlign = "center";
+            drawText(ctx, `You have but a minute to battle the foul Megoosa before her\npetrification curse turns your features to stone!\n\nFate has chosen you ${crsid.classname}!`, 0, -75);
 
             ctx.globalAlpha = t;
             if (crsid.body !== "none") drawDuck(ctx, sprites.body[crsid.body], time, bobIdx, 0, bobY, 2);
@@ -154,12 +157,13 @@ class GameplayEnter extends GameplayState {
 
             ctx.font = "25px INET";
             ctx.fillStyle = `rgba(255, 255, 255, ${1 - t})`;
-            drawText(ctx, `Welcome ${crsid.name} of ${crsid.college}...`, 0, 75);
+            ctx.textAlign = "center";
+            drawText(ctx, `Welcome ${crsid.name} of ${crsid.college}`, 0, 75);
 
             ctx.font = "25px INET";
             ctx.fillStyle = `rgba(255, 255, 255, ${1 - t})`;
-            drawText(ctx, `LORE LORE LORE!`, 0, -75);
-            drawText(ctx, `You are a ${crsid.classname}!`, 0, -100);
+            ctx.textAlign = "center";
+            drawText(ctx, `You have but a minute to battle the foul Megoosa before her\npetrification curse turns your features to stone!\n\nFate has chosen you ${crsid.classname}!`, 0, -75);
 
             // Animated duck
             let idx = Math.floor((time * 2) % 4);
@@ -195,6 +199,8 @@ export class GameplayPlay extends GameplayState {
         this.gameState = gameState;
         this.inputProvider = this.gameState.frames ? new ReplayController(this.gameState.frames) : new ControllerInput();
         this.inputRecorder = new InputRecorder();
+
+        this.stat = blankStats();
 
         gameState.deadBodies.sort((a, b) => b.position.y - a.position.y);
 
@@ -327,6 +333,8 @@ export class GameplayPlay extends GameplayState {
 
     timeInFight = 0;
 
+    stat: Stats = undefined!;
+
     public tick(dt: number) {
         if (this.gameState === undefined) throw new Error("No game state!");
         if (this.state !== "Idle" && this.state !== "Fight") return;
@@ -415,7 +423,11 @@ export class GameplayPlay extends GameplayState {
                             e = new ParticleEffect(sprites.effects.leaf);
                             break;
                     }
-                    if (e) Vec2.copy(p.position, e.position);
+                    if (e) {
+                        Vec2.copy(p.position, e.position);
+                        e.scale = 1;
+                        e.rotation = Math.random() * Math.PI * 2;
+                    }
                 } else {
                     // dead body collision
                     for (const { hurtbox, ref } of this.deadBodyObstructions.buffer) {
@@ -462,6 +474,8 @@ export class GameplayPlay extends GameplayState {
                     }
                     const e = new ParticleEffect(sprites.effects.slash);
                     Vec2.copy(p.position, e.position);
+                    e.scale = 1;
+                    e.rotation = Math.random() * Math.PI * 2;
                 } else {
                     // dead body collision
                     for (const { hurtbox, ref } of this.deadBodyObstructions.buffer) {
@@ -469,6 +483,8 @@ export class GameplayPlay extends GameplayState {
                             p.timeAlive = 0;
                             const e = new ParticleEffect(sprites.effects.slash);
                             Vec2.copy(p.position, e.position);
+                            e.scale = 1;
+                            e.rotation = Math.random() * Math.PI * 2;
                         }
                     }
                 }
@@ -528,8 +544,7 @@ export class GameplayPlay extends GameplayState {
             if (ref.health > 0) this.deadBodyObstructions.push(d);
             else if (!ref.isBroken) {
                 ref.isBroken = true;
-                const query = new URLSearchParams({ soul: ref.crsid.id, player: this.gameState.crsid.id } as any).toString();
-                fetch(`/ancientgeese/api/saveSoul?${query}`, { method: "POST" });
+                this.stat.statuesDestroyed += 1;
             }
         }
         this.deadBodyObstructions.swap();
@@ -586,6 +601,8 @@ export class GameplayPlay extends GameplayState {
 
     private player: Player = new Player();
     private boss: Boss = new Boss();
+
+    private triggerAudio = false;
 
     public draw(time: number, dt: number) {
         if (!this.gameState) throw new Error("No gameplay save state!");
@@ -829,8 +846,15 @@ export class GameplayPlay extends GameplayState {
             if (this.timer > this.loseDuration) {
                 this.state = "Freeze";
                 this.timer = 0;
+                this.triggerAudio = true;
             }
         } else if (this.state === "Freeze") {
+            if (this.triggerAudio) {
+                const audio = new Audio("/ancientgeese/assets/audio/petrify.wav");
+                audio.play();
+                this.triggerAudio = false;
+            }
+
             {
                 const w = this.renderer.canvas.width / camera.scaleFactor;
                 const hx = w / 2;
@@ -899,8 +923,15 @@ export class GameplayPlay extends GameplayState {
             if (this.timer > this.loseDuration) {
                 this.state = "WinFreeze";
                 this.timer = 0;
+                this.triggerAudio = true;
             }
         } else if (this.state === "WinFreeze") {
+            if (this.triggerAudio) {
+                const audio = new Audio("/ancientgeese/assets/audio/petrify.wav");
+                audio.play();
+                this.triggerAudio = false;
+            }
+
             {
                 const w = this.renderer.canvas.width / camera.scaleFactor;
                 const hx = w / 2;
@@ -1095,6 +1126,7 @@ export class GameplayPlay extends GameplayState {
                         health: 5,
                     });
                 }
+                this.stat.damageDealt = this.gameState.bossHealth - this.boss.health;
                 this.gameState.bossHealth = this.boss.health;
                 const nextState = JSON.stringify(this.gameState);
 
@@ -1102,13 +1134,14 @@ export class GameplayPlay extends GameplayState {
                     method: "POST",
                     body: JSON.stringify({
                         replay,
-                        nextState
+                        nextState,
+                        stat: this.stat
                     })
                 });
-                this.gameplay.gameplayExit.enter(this.gameState);
+                this.gameplay.gameplayExit.enter(this.gameState, this.stat);
             } else {
                 this.gameState.bossHealth = this.boss.health;
-                this.gameplay.gameplayExit.enter(this.gameState);
+                this.gameplay.gameplayExit.enter(this.gameState, this.stat);
             }
 
         }
@@ -1127,7 +1160,10 @@ class GameplayExit extends GameplayState {
     private crsid: CRSID | undefined = undefined;
     private gameState: GameState = undefined!;
 
-    public enter(gameState: GameState) {
+    private stat: Stats = undefined!;
+
+    public enter(gameState: GameState, stat: Stats) {
+        this.stat = stat;
         this.gameplay.game.mode = "Gameplay";
         this.gameplay.state = "Exit"
         this.gameplay.gameState = gameState;
@@ -1154,9 +1190,8 @@ class GameplayExit extends GameplayState {
         if (!this.crsid) throw new Error("No crsid!");
 
         const win = this.gameState.bossHealth <= 0;
-        const title = win ? `Congratulations ${this.crsid.name}!` : `In memory of ${this.crsid.name}...`;
-        const desc1 = win ? `You have slain the beast.` : `You did X damage.`;
-        const desc2 = win ? `You did X damage` : `Some random phrase.`;
+        const title = win ? `Congratulations ${this.crsid.name}!` : `A valient effort mighty ${this.crsid.name}.`;
+        const desc = win ? `The serpent-necked terror is no more, Megoosa, has been slain.\nYou dealt ${this.stat.damageDealt} damage.` : `You dealt ${this.stat.damageDealt} damage.`;
 
         const ctx = this.renderer.ctx;
         const camera = this.gameplay.camera;
@@ -1204,6 +1239,7 @@ class GameplayExit extends GameplayState {
 
             ctx.font = "25px INET";
             ctx.fillStyle = `rgba(255, 255, 255, ${t})`;
+            ctx.textAlign = "center";
             drawText(ctx, title, 0, 75);
 
             if (this.timer > this.welcomeDuration) {
@@ -1215,12 +1251,13 @@ class GameplayExit extends GameplayState {
 
             ctx.font = "25px INET";
             ctx.fillStyle = `rgba(255, 255, 255, 1)`;
+            ctx.textAlign = "center";
             drawText(ctx, title, 0, 75);
 
             ctx.font = "25px INET";
             ctx.fillStyle = `rgba(255, 255, 255, ${t})`;
-            drawText(ctx, desc1, 0, -75);
-            drawText(ctx, desc2, 0, -100);
+            ctx.textAlign = "center";
+            drawText(ctx, desc, 0, -75);
 
             if (this.timer > this.classDuration) {
                 this.state = "Exit";
@@ -1231,12 +1268,13 @@ class GameplayExit extends GameplayState {
 
             ctx.font = "25px INET";
             ctx.fillStyle = `rgba(255, 255, 255, ${1 - t})`;
+            ctx.textAlign = "center";
             drawText(ctx, title, 0, 75);
 
             ctx.font = "25px INET";
             ctx.fillStyle = `rgba(255, 255, 255, ${1 - t})`;
-            drawText(ctx, desc1, 0, -75);
-            drawText(ctx, desc2, 0, -100);
+            ctx.textAlign = "center";
+            drawText(ctx, desc, 0, -75);
 
             // Animated duck
             let idx = Math.floor((time * 2) % 4);
@@ -1291,12 +1329,10 @@ export class Gameplay {
     }
 
     public draw(time: number, dt: number) {
-        const ctx = this.renderer.ctx;
-        tickAllEffects(this.camera, ctx, dt);
-
         this.camera.start();
 
         // Clear screen
+        const ctx = this.renderer.ctx;
         const w = this.renderer.canvas.width / this.camera.scaleFactor;
         const hx = w / 2;
         const h = this.renderer.canvas.height / this.camera.scaleFactor;
@@ -1316,6 +1352,8 @@ export class Gameplay {
         }
 
         this.camera.end();
+
+        tickAllEffects(this.camera, ctx, dt);
 
         switch (this.state) {
             case "Play":

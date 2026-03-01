@@ -9,7 +9,7 @@ window.addEventListener("click", () => {
     const audio = new Audio("/ancientgeese/assets/audio/soundtrack2.mp3");
     audio.loop = true;
     audio.play();
-});
+}, { once: true });
 
 const style = Style(({ css }) => {
     const wrapper = css.style`

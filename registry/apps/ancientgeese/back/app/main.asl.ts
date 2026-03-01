@@ -92,12 +92,29 @@ if (await fileStat(NEXT_STATE_PATH)) {
     nextState = JSON.parse(await fs.readFile(NEXT_STATE_PATH, { encoding: "utf-8" }))
 }
 
-let crsidMap: { [k: string]: string } = {};
+let crsidMap: { [k: string]: { replay: string, stats: Stats } } = {};
 if (await fileStat(CRSID_MAP_PATH)) {
     crsidMap = JSON.parse(await fs.readFile(CRSID_MAP_PATH, { encoding: "utf-8" }))
 }
 
 let inGame = false;
+
+export interface Stats {
+    damageDealt: number;
+    statuesDestroyed: number;
+}
+
+app.route("GET", "/api/leaderboard", async (match, req, res) => {
+    app.serve(CRSID_MAP_PATH, res);
+});
+
+app.route("GET", "/api/replay", async (match, req, res, url) => {
+    const entries = Object.entries(crsidMap);
+    const len = entries.length;
+    let id = Math.floor(Math.random() * len);
+    if (id >= len) id = len - 1;
+    app.serve(path.join(PATH, "replays", entries[id][1].replay), res);
+});
 
 app.route("POST", "/api/finish", async (match, req, res, url) => {
     if (!inGame) {
@@ -115,6 +132,7 @@ app.route("POST", "/api/finish", async (match, req, res, url) => {
     const finishedRun: {
         replay: string;
         nextState: string;
+        stats: Stats;
     } = JSON.parse(body);
 
     const replay = JSON.parse(finishedRun.replay);
@@ -127,7 +145,7 @@ app.route("POST", "/api/finish", async (match, req, res, url) => {
         return;
     }
 
-    crsidMap[replay.crsid.id] = name;
+    crsidMap[replay.crsid.id] = { replay: name, stats: finishedRun.stats };
     await fs.writeFile(path.join(PATH, "replays", name), finishedRun.replay);
 
     nextState = JSON.parse(finishedRun.nextState);
@@ -223,7 +241,7 @@ app.route("GET", "/api/start", async (match, req, res, url) => {
     const id = url.searchParams.get("id")!.toLowerCase();
 
     if (id in crsidMap) {
-        broadcast(JSON.parse(await fs.readFile(path.join(PATH, "replays", crsidMap[id]), { encoding: "utf-8" })));
+        broadcast(JSON.parse(await fs.readFile(path.join(PATH, "replays", crsidMap[id].replay), { encoding: "utf-8" })));
         res.statusCode = 200;
         res.end("Done!");
         return;

@@ -162,6 +162,9 @@ export class Boss {
                     Vec2.scale(this.dirToTarget, this.chargeSpeed, this.velocity);
                     this.charged = true;
 
+                    const audio = new Audio("/ancientgeese/assets/audio/charge.wav");
+                    audio.play();
+
                     const sep = Math.deg2rad * 10;
                     const count = 10;
                     const speed = 100;

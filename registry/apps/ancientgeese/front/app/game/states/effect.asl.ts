@@ -12,14 +12,14 @@ export class ParticleEffect {
     constructor(anim: Anim) {
         ParticleEffect.effects.buffer.push(this);
         this.anim = anim;
-        this.timer = this.anim.duration;
     }
 
     timer = 0;
     scale = 1;
     position = Vec2.zero();
+    rotation = 0;
     public draw(ctx: CanvasRenderingContext2D, dt: number) {
-        drawImage(ctx, this.anim.get(Math.clamp(this.timer, 0, this.anim.duration - 0.1)), this.position.x, this.position.y, this.scale, this.scale);
+        drawImage(ctx, this.anim.get(Math.clamp(this.timer, 0, this.anim.duration - 0.1)), this.position.x, this.position.y, this.scale, this.scale, this.rotation);
     }
 }
 

@@ -5,8 +5,7 @@ export function drawText(ctx: CanvasRenderingContext2D, text: string, x: number,
     ctx.translate(x, y);
     ctx.scale(-1, 1);
     ctx.rotate(Math.PI);
-    const bounds = ctx.measureText(text);
-    ctx.fillText(text, -bounds.width / 2, 0);
+    ctx.fillText(text, 0, 0);
     ctx.restore();
 }
 

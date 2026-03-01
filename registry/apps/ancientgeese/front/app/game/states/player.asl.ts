@@ -175,6 +175,8 @@ export class Player {
                 this.dodgeTimer = this.dodgeDuration;
                 this.dodgeCooldownTimer = this.dodgeCooldown;
                 this.dodgeIdx = this.idx;
+                const audio = new Audio("/ancientgeese/assets/audio/jump.wav");
+                audio.play();
             }
 
             if (this.dodgeCooldownTimer > 0) {
