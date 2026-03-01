@@ -6,6 +6,7 @@ import { GameComp } from "./game/comp.asl";
 await __ASL.require("./game/math/ext.asl");
 
 window.addEventListener("click", () => {
+    if ((window as any).game.inReplayMode) return;
     const audio = new Audio("/ancientgeese/assets/audio/soundtrack2.mp3");
     audio.loop = true;
     audio.play();

@@ -10,6 +10,13 @@ export class Game {
 
     public readonly renderer: Renderer;
 
+    public inReplayMode = false;
+    public async replayMode() {
+        this.inReplayMode = true;
+        const resp = await fetch(`/ancientgeese/api/replay`, { method: "GET" });
+        this.menu.exit(await resp.json());
+    }
+
     public mode: "Gameplay" | "Menu" = "Menu";
     public menu: Menu;
     public gameplay: Gameplay;

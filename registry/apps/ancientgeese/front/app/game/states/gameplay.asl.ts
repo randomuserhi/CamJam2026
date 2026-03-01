@@ -125,7 +125,7 @@ class GameplayEnter extends GameplayState {
                 this.timer = 0;
             }
         } else if (this.state === "ClassReveal") {
-            if (this.playOnce) {
+            if (this.playOnce && !(window as any).game.inReplayMode) {
                 const audio = new Audio("/ancientgeese/assets/audio/sparkle.wav");
                 audio.play();
                 this.playOnce = false;
@@ -141,7 +141,9 @@ class GameplayEnter extends GameplayState {
             ctx.font = "25px INET";
             ctx.fillStyle = `rgba(255, 255, 255, ${t})`;
             ctx.textAlign = "center";
-            drawText(ctx, `You have but a minute to battle the foul Megoosa before her\npetrification curse turns your features to stone!\n\nFate has chosen you ${crsid.classname}!`, 0, -75);
+            drawText(ctx, `Fate has assigned you as a ${crsid.classname}!`, 0, -75);
+            drawText(ctx, `You have but a minute to battle the foul Megoosa before her`, 0, -105);
+            drawText(ctx, `petrification curse sets you into to stone!`, 0, -125);
 
             ctx.globalAlpha = t;
             if (crsid.body !== "none") drawDuck(ctx, sprites.body[crsid.body], time, bobIdx, 0, bobY, 2);
@@ -163,7 +165,9 @@ class GameplayEnter extends GameplayState {
             ctx.font = "25px INET";
             ctx.fillStyle = `rgba(255, 255, 255, ${1 - t})`;
             ctx.textAlign = "center";
-            drawText(ctx, `You have but a minute to battle the foul Megoosa before her\npetrification curse turns your features to stone!\n\nFate has chosen you ${crsid.classname}!`, 0, -75);
+            drawText(ctx, `Fate has assigned you as a ${crsid.classname}!`, 0, -75);
+            drawText(ctx, `You have but a minute to battle the foul Megoosa before her`, 0, -105);
+            drawText(ctx, `petrification curse sets you into to stone!`, 0, -125);
 
             // Animated duck
             let idx = Math.floor((time * 2) % 4);
@@ -443,8 +447,10 @@ export class GameplayPlay extends GameplayState {
                 this.player.health -= 1;
                 this.player.invincibleTimer = 2;
                 canTakeDamage = false;
-                const audio = new Audio("/ancientgeese/assets/audio/hurt.wav");
-                audio.play();
+                if (!(window as any).game.inReplayMode) {
+                    const audio = new Audio("/ancientgeese/assets/audio/hurt.wav");
+                    audio.play();
+                }
                 if (this.player.health <= 0) {
                     this.end("Lose");
                     return;
@@ -466,8 +472,10 @@ export class GameplayPlay extends GameplayState {
                     this.player.health -= 1;
                     this.player.invincibleTimer = 2;
                     canTakeDamage = false;
-                    const audio = new Audio("/ancientgeese/assets/audio/hurt.wav");
-                    audio.play();
+                    if (!(window as any).game.inReplayMode) {
+                        const audio = new Audio("/ancientgeese/assets/audio/hurt.wav");
+                        audio.play();
+                    }
                     if (this.player.health <= 0) {
                         this.end("Lose");
                         return;
@@ -849,7 +857,7 @@ export class GameplayPlay extends GameplayState {
                 this.triggerAudio = true;
             }
         } else if (this.state === "Freeze") {
-            if (this.triggerAudio) {
+            if (this.triggerAudio && !(window as any).game.inReplayMode) {
                 const audio = new Audio("/ancientgeese/assets/audio/petrify.wav");
                 audio.play();
                 this.triggerAudio = false;
@@ -926,7 +934,7 @@ export class GameplayPlay extends GameplayState {
                 this.triggerAudio = true;
             }
         } else if (this.state === "WinFreeze") {
-            if (this.triggerAudio) {
+            if (this.triggerAudio && !(window as any).game.inReplayMode) {
                 const audio = new Audio("/ancientgeese/assets/audio/petrify.wav");
                 audio.play();
                 this.triggerAudio = false;
@@ -989,6 +997,13 @@ export class GameplayPlay extends GameplayState {
         const ctx = this.renderer.ctx;
         const canvas = this.renderer.canvas;
         const camera = this.gameplay.camera;
+
+        ctx.save()
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.scale(this.gameplay.camera.scaleFactor, -this.gameplay.camera.scaleFactor)
+        drawImage(ctx, sprites.ui.shoottip, -camera.size.x / 2 + 40, -camera.size.y / 2 + 20, 1, 1);
+        drawImage(ctx, sprites.ui.jumptip, -camera.size.x / 2 + 40, -camera.size.y / 2 + 40, 1, 1);
+        ctx.restore();
 
         if (this.state === "Fight") {
             const t = Math.clamp01(this.timeInFight / 1);
@@ -1135,11 +1150,21 @@ export class GameplayPlay extends GameplayState {
                     body: JSON.stringify({
                         replay,
                         nextState,
-                        stat: this.stat
+                        stats: this.stat,
+                        wasReplay: false
                     })
                 });
                 this.gameplay.gameplayExit.enter(this.gameState, this.stat);
             } else {
+                this.stat.damageDealt = this.gameState.bossHealth - this.boss.health;
+
+                fetch("/ancientgeese/api/finish", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        wasReplay: true
+                    })
+                });
+
                 this.gameState.bossHealth = this.boss.health;
                 this.gameplay.gameplayExit.enter(this.gameState, this.stat);
             }

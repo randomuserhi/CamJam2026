@@ -288,7 +288,9 @@ export const sprites = {
     ui: {
         heart: await loadImage("/ancientgeese/assets/ui/heart.png"),
         emptyheart: await loadImage("/ancientgeese/assets/ui/emptyheart.png"),
-        bossbar: await loadImage("/ancientgeese/assets/ui/bosshealthbar.png")
+        bossbar: await loadImage("/ancientgeese/assets/ui/bosshealthbar.png"),
+        shoottip: await loadImage("/ancientgeese/assets/ui/shoottip.png"),
+        jumptip: await loadImage("/ancientgeese/assets/ui/jumptip.png"),
     },
     projectiles: {
         leaf: await loadImage("/ancientgeese/assets/proj/leaf.png"),

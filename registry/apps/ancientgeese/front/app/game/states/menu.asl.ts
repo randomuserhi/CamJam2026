@@ -36,6 +36,10 @@ export class Menu {
         this.state = "Enter";
         this.hat = DuckHat[Math.floor(Math.random() * DuckHat.length)];
         this.body = DuckBody[Math.floor(Math.random() * DuckBody.length)];
+
+        if (this.game.inReplayMode) {
+            this.game.replayMode();
+        }
     }
 
     public gameState?: GameState = undefined;

@@ -133,6 +133,7 @@ app.route("POST", "/api/finish", async (match, req, res, url) => {
         replay: string;
         nextState: string;
         stats: Stats;
+        wasReplay: boolean;
     } = JSON.parse(body);
 
     const replay = JSON.parse(finishedRun.replay);
@@ -141,6 +142,13 @@ app.route("POST", "/api/finish", async (match, req, res, url) => {
     if (replay.crsid.id === "ceht2") {
         res.statusCode = 500;
         res.end("Master card");
+        inGame = false;
+        return;
+    }
+
+    if (finishedRun.wasReplay) {
+        res.statusCode = 500;
+        res.end("Was replay");
         inGame = false;
         return;
     }
@@ -282,11 +290,15 @@ app.route("GET", "/api/start", async (match, req, res, url) => {
                 }
             }
         }
+        if (college === "UNKNOWN") {
+            console.log(ou);
+            college = "Cambridge";
+        }
 
         let classname = DuckClasses[((result as any).studentNumber ?? 0) % 3];
         if (id === "jl2395") classname = "Jacket";
 
-        if (id === "ceht2") classname = "Warrior";
+        if (id === "ceht2") classname = "Jacket";
 
         let body: DuckBody = "mage";
         switch (classname) {

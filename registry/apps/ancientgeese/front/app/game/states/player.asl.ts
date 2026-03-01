@@ -175,8 +175,10 @@ export class Player {
                 this.dodgeTimer = this.dodgeDuration;
                 this.dodgeCooldownTimer = this.dodgeCooldown;
                 this.dodgeIdx = this.idx;
-                const audio = new Audio("/ancientgeese/assets/audio/jump.wav");
-                audio.play();
+                if (!(window as any).game.inReplayMode) {
+                    const audio = new Audio("/ancientgeese/assets/audio/jump.wav");
+                    audio.play();
+                }
             }
 
             if (this.dodgeCooldownTimer > 0) {
@@ -215,8 +217,10 @@ export class Player {
 
                 this.projTimer = this.projCooldown * 0.5;
 
-                const audio = new Audio("/ancientgeese/assets/audio/leaf.wav");
-                audio.play();
+                if (!(window as any).game.inReplayMode) {
+                    const audio = new Audio("/ancientgeese/assets/audio/leaf.wav");
+                    audio.play();
+                }
             } break;
             case "Jacket": {
                 Vec2.copy(this.shootDir, this.projdir);
@@ -225,8 +229,10 @@ export class Player {
 
                 this.projTimer = this.projCooldown * 0.5;
 
-                const audio = new Audio("/ancientgeese/assets/audio/leaf.wav");
-                audio.play();
+                if (!(window as any).game.inReplayMode) {
+                    const audio = new Audio("/ancientgeese/assets/audio/leaf.wav");
+                    audio.play();
+                }
             } break;
             case "Warrior": {
                 const lifetime = 0.4;
@@ -242,8 +248,10 @@ export class Player {
 
                 this.projTimer = this.projCooldown;
 
-                const audio = new Audio("/ancientgeese/assets/audio/dagger.wav");
-                audio.play();
+                if (!(window as any).game.inReplayMode) {
+                    const audio = new Audio("/ancientgeese/assets/audio/dagger.wav");
+                    audio.play();
+                }
             } break;
             case "Wizard": {
                 Vec2.copy(this.shootDir, this.projdir);
@@ -252,8 +260,10 @@ export class Player {
 
                 this.projTimer = this.projCooldown * 2;
 
-                const audio = new Audio("/ancientgeese/assets/audio/fire.wav");
-                audio.play();
+                if (!(window as any).game.inReplayMode) {
+                    const audio = new Audio("/ancientgeese/assets/audio/fire.wav");
+                    audio.play();
+                }
             } break;
         }
     }
@@ -266,7 +276,7 @@ export class Player {
                 const p = new HerbalistProjectile();
                 p.scale = rand() * 2 - 1;
                 projectile = p;
-                projectile.damage = 1.5;
+                projectile.damage = 0.5;
             } break;
             case "Warrior": {
                 projectile = new Projectile();
@@ -277,12 +287,12 @@ export class Player {
                 p.maxSpeed = 500;
                 p.rampDuration = 1;
                 projectile = p;
-                projectile.damage = 3
+                projectile.damage = 3;
             } break;
             case "Jacket": {
                 const p = new Projectile();
                 projectile = p;
-                projectile.damage = 2.5
+                projectile.damage = 2.5;
             } break;
         }
 
@@ -309,8 +319,10 @@ export class Player {
 
         this.quackCooldownTimer = this.quackCooldown;
 
-        const audio = new Audio("/ancientgeese/assets/audio/quack.wav");
-        audio.play()
+        if (!(window as any).game.inReplayMode) {
+            const audio = new Audio("/ancientgeese/assets/audio/quack.wav");
+            audio.play()
+        }
     }
 
     private integrate(dt: number) {
