@@ -5,5 +5,5 @@ export interface CSRID {
     body: DuckBody;
     name: string;
     college: string;
-    classname: "Herbalist" | "Warrior" | "Wizard";
+    classname: "Herbalist" | "Warrior" | "Wizard" | "Jacket";
 }

@@ -12,6 +12,7 @@ export class Boss {
     acceleration: Vec2 = Vec2.zero();
 
     speed = 100;
+    health: number = 0;
 
     collider: BoxCollider = new BoxCollider();
     hurtbox: BoxCollider = new BoxCollider();

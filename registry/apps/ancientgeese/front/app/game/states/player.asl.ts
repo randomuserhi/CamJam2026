@@ -212,6 +212,19 @@ export class Player {
                 this.spawnProjectile(this.projdir, crsid, projectiles, rand);
 
                 this.projTimer = this.projCooldown * 0.5;
+
+                const audio = new Audio("/ancientgeese/assets/audio/leaf.wav");
+                audio.play();
+            } break;
+            case "Jacket": {
+                Vec2.copy(this.shootDir, this.projdir);
+                const proj = this.spawnProjectile(this.projdir, crsid, projectiles, rand);
+                proj.speed = 300;
+
+                this.projTimer = this.projCooldown * 0.5;
+
+                const audio = new Audio("/ancientgeese/assets/audio/leaf.wav");
+                audio.play();
             } break;
             case "Warrior": {
                 const lifetime = 0.4;
@@ -226,6 +239,9 @@ export class Player {
                 this.spawnProjectile(Vec2.rotate(this.projdir, -Math.PI / 13, this.projdir), crsid, projectiles, rand, lifetime);
 
                 this.projTimer = this.projCooldown;
+
+                const audio = new Audio("/ancientgeese/assets/audio/dagger.wav");
+                audio.play();
             } break;
             case "Wizard": {
                 Vec2.copy(this.shootDir, this.projdir);
@@ -233,13 +249,11 @@ export class Player {
                 Vec2.set(20, 20, p.collider.size);
 
                 this.projTimer = this.projCooldown * 2;
+
+                const audio = new Audio("/ancientgeese/assets/audio/fire.wav");
+                audio.play();
             } break;
         }
-
-        // TODO: audio
-        //this.state.playerProjectiles.buffer.push(projectile);
-        //const audio = new Audio("/game/assets/audio/shoot.wav");
-        //audio.play()
     }
 
     private spawnProjectile(dir: Vec2, crsid: CSRID, projectiles: DoubleBuffer<Projectile>, rand: () => number, lifetime: number = 3) {
@@ -250,18 +264,23 @@ export class Player {
                 const p = new HerbalistProjectile();
                 p.scale = rand() * 2 - 1;
                 projectile = p;
-                projectile.damage = 1;
+                projectile.damage = 1.5;
             } break;
             case "Warrior": {
                 projectile = new Projectile();
-                projectile.damage = 1;
+                projectile.damage = 2;
             } break;
             case "Wizard": {
                 const p = new WizardProjectile();
                 p.maxSpeed = 500;
                 p.rampDuration = 1;
                 projectile = p;
-                projectile.damage = 1
+                projectile.damage = 3
+            } break;
+            case "Jacket": {
+                const p = new Projectile();
+                projectile = p;
+                projectile.damage = 2.5
             } break;
         }
 
@@ -288,7 +307,7 @@ export class Player {
 
         this.quackCooldownTimer = this.quackCooldown;
 
-        const audio = new Audio("/game/assets/audio/quack.wav");
+        const audio = new Audio("/ancientgeese/assets/audio/quack.wav");
         audio.play()
     }
 

@@ -39,6 +39,10 @@ export class Projectile {
                 const scale = 1.5;
                 drawImage(ctx, sprites.projectiles.fireball, this.position.x, this.position.y, scale, scale, angle);
             } break;
+            case "Jacket": {
+                const scale = 1;
+                drawImage(ctx, sprites.projectiles.money, this.position.x, this.position.y, scale, scale, angle);
+            } break;
         }
     }
 

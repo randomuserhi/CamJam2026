@@ -5,6 +5,12 @@ import { GameComp } from "./game/comp.asl";
 // Load math extensions statically
 await __ASL.require("./game/math/ext.asl");
 
+window.addEventListener("click", () => {
+    const audio = new Audio("/ancientgeese/assets/audio/soundtrack2.mp3");
+    audio.loop = true;
+    audio.play();
+});
+
 const style = Style(({ css }) => {
     const wrapper = css.style`
     width: 100%;

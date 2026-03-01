@@ -287,14 +287,24 @@ export const sprites = {
     },
     ui: {
         heart: await loadImage("/ancientgeese/assets/ui/heart.png"),
-        emptyheart: await loadImage("/ancientgeese/assets/ui/emptyheart.png")
+        emptyheart: await loadImage("/ancientgeese/assets/ui/emptyheart.png"),
+        bossbar: await loadImage("/ancientgeese/assets/ui/bosshealthbar.png")
     },
     projectiles: {
         leaf: await loadImage("/ancientgeese/assets/proj/leaf.png"),
         fireball: await loadImage("/ancientgeese/assets/proj/fireball.png"),
         dagger: await loadImage("/ancientgeese/assets/proj/dagger.png"),
+        money: await loadImage("/ancientgeese/assets/proj/20.png")
     },
     boss: {
+        death: new Anim([
+            await loadImage("/ancientgeese/assets/boss/death/Megoosa Death1.png"),
+            await loadImage("/ancientgeese/assets/boss/death/Megoosa Death2.png"),
+            await loadImage("/ancientgeese/assets/boss/death/Megoosa Death3.png"),
+            await loadImage("/ancientgeese/assets/boss/death/Megoosa Death4.png"),
+            await loadImage("/ancientgeese/assets/boss/death/Megoosa Death5.png"),
+            await loadImage("/ancientgeese/assets/boss/death/Megoosa Death6.png"),
+        ], 5),
         walk: new Anim([
             await loadImage("/ancientgeese/assets/boss/walk/Megoosa Walk1.png"),
             await loadImage("/ancientgeese/assets/boss/walk/Megoosa Walk2.png"),

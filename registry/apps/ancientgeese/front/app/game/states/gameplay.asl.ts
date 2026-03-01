@@ -12,6 +12,7 @@ import { xor } from "../rand.asl";
 import { Camera, Renderer } from "../renderer.asl";
 import { sprites } from "../sprites.asl";
 import { Boss } from "./boss.asl";
+import { ParticleEffect, tickAllEffects } from "./effect.asl";
 import { BASE_OFFSET as PLAYER_OFFSET, Player, PLAYER_SCALE } from "./player.asl";
 import { EnemyProjectile, Projectile } from "./projectile.asl";
 import { GameState } from "./savestate.asl";
@@ -54,6 +55,7 @@ class GameplayEnter extends GameplayState {
 
         this.state = "Enter";
         this.timer = 0;
+        this.playOnce = true;
     }
 
     private enterDuration = 1.5;
@@ -65,6 +67,8 @@ class GameplayEnter extends GameplayState {
 
     private exitDuration = 1.5;
     private duckExitCurve = Bezier(0.19, -0.01, 0.74, -0.05);
+
+    private playOnce = true;
 
     public draw(time: number, dt: number) {
         if (!this.gameState) throw new Error("No gameState!");
@@ -119,6 +123,12 @@ class GameplayEnter extends GameplayState {
                 this.timer = 0;
             }
         } else if (this.state === "ClassReveal") {
+            if (this.playOnce) {
+                const audio = new Audio("/ancientgeese/assets/audio/sparkle.wav");
+                audio.play();
+                this.playOnce = false;
+            }
+
             const t = Math.clamp01(this.timer / this.classDuration * 2);
 
             ctx.font = "25px INET";
@@ -174,7 +184,7 @@ export class GameplayPlay extends GameplayState {
         super(gameplay, renderer);
     }
 
-    private state: "Enter" | "Idle" | "Fight" | "Win" | "Lose" | "Freeze" | "Exit" = "Enter";
+    private state: "Enter" | "Idle" | "Fight" | "Win" | "WinFreeze" | "WinExit" | "Lose" | "Freeze" | "Exit" = "Enter";
 
     public rand: () => number = undefined!;
 
@@ -192,6 +202,7 @@ export class GameplayPlay extends GameplayState {
 
         this.state = "Enter";
         this.timer = 0;
+        this.boss.health = gameState.bossHealth;
 
         const camera = this.gameplay.camera;
         this.gapUpperBound = camera.size.y * 1 + camera.size.y / 2;
@@ -342,7 +353,7 @@ export class GameplayPlay extends GameplayState {
 
             this.timeInFight += dt;
             if (this.timeInFight > 60) {
-                this.lose("Lose");
+                this.end("Lose");
                 return;
             }
 
@@ -383,7 +394,28 @@ export class GameplayPlay extends GameplayState {
                 if (isColliding(p.collider, this.boss.hurtbox)) {
                     p.timeAlive = 0;
                     // TODO: hit effect
-                    this.gameState.bossHealth -= p.damage;
+                    this.boss.health -= p.damage;
+                    if (this.boss.health <= 0) {
+                        this.end("Win");
+                        return;
+                    }
+
+                    let e: ParticleEffect | undefined = undefined;
+                    switch (this.gameState.crsid.classname) {
+                        case "Herbalist":
+                            e = new ParticleEffect(sprites.fx.leaf);
+                            break;
+                        case "Warrior":
+                            e = new ParticleEffect(sprites.fx.slash);
+                            break;
+                        case "Wizard":
+                            e = new ParticleEffect(sprites.fx.explosion);
+                            break;
+                        case "Jacket":
+                            e = new ParticleEffect(sprites.fx.leaf);
+                            break;
+                    }
+                    if (e) Vec2.copy(p.position, e.position);
                 } else {
                     // dead body collision
                     for (const { hurtbox, ref } of this.deadBodyObstructions.buffer) {
@@ -397,10 +429,12 @@ export class GameplayPlay extends GameplayState {
 
             if (canTakeDamage && this.boss.isCharging && isColliding(this.boss.damagebox, this.player.hurtbox)) {
                 this.player.health -= 1;
-                this.player.invincibleTimer = 1.5;
+                this.player.invincibleTimer = 2;
                 canTakeDamage = false;
+                const audio = new Audio("/ancientgeese/assets/audio/hurt.wav");
+                audio.play();
                 if (this.player.health <= 0) {
-                    this.lose("Lose");
+                    this.end("Lose");
                     return;
                 }
             }
@@ -418,17 +452,23 @@ export class GameplayPlay extends GameplayState {
                 if (canTakeDamage && isColliding(p.collider, this.player.hurtbox)) {
                     p.timeAlive = 0;
                     this.player.health -= 1;
-                    this.player.invincibleTimer = 1.5;
+                    this.player.invincibleTimer = 2;
                     canTakeDamage = false;
+                    const audio = new Audio("/ancientgeese/assets/audio/hurt.wav");
+                    audio.play();
                     if (this.player.health <= 0) {
-                        this.lose("Lose");
+                        this.end("Lose");
                         return;
                     }
+                    const e = new ParticleEffect(sprites.fx.slash);
+                    Vec2.copy(p.position, e.position);
                 } else {
                     // dead body collision
                     for (const { hurtbox, ref } of this.deadBodyObstructions.buffer) {
                         if (isColliding(p.collider, hurtbox)) {
                             p.timeAlive = 0;
+                            const e = new ParticleEffect(sprites.fx.slash);
+                            Vec2.copy(p.position, e.position);
                         }
                     }
                 }
@@ -797,8 +837,6 @@ export class GameplayPlay extends GameplayState {
                 ctx.fillRect(camera.position.x - hx, camera.position.y - hy, w, h);
             }
 
-            // TODO freeze animation
-
             let scale = PLAYER_SCALE;
             let idx = this.player.idx;
             let isIdle = true;
@@ -837,7 +875,77 @@ export class GameplayPlay extends GameplayState {
             ctx.globalAlpha = 1;
 
             if (this.timer > this.exitDuration) {
-                this.lose("Exit");
+                this.end("Exit");
+            }
+        } else if (this.state === "Win") {
+            const t = Math.clamp01(this.timer / this.loseDuration);
+
+            {
+                const w = this.renderer.canvas.width / camera.scaleFactor;
+                const hx = w / 2;
+                const h = this.renderer.canvas.height / camera.scaleFactor;
+                const hy = h / 2;
+
+                ctx.fillStyle = `rgba(0, 0, 0, ${t})`;
+                ctx.fillRect(camera.position.x - hx, camera.position.y - hy, w, h);
+            }
+
+            this.boss.draw(0, 0, ctx);
+
+            if (this.timer > this.loseDuration) {
+                this.state = "WinFreeze";
+                this.timer = 0;
+            }
+        } else if (this.state === "WinFreeze") {
+            {
+                const w = this.renderer.canvas.width / camera.scaleFactor;
+                const hx = w / 2;
+                const h = this.renderer.canvas.height / camera.scaleFactor;
+                const hy = h / 2;
+
+                ctx.fillStyle = `rgba(0, 0, 0, 1)`;
+                ctx.fillRect(camera.position.x - hx, camera.position.y - hy, w, h);
+            }
+
+            const scale = 1.4;
+            const offsetY = 55;
+
+            const xscale = this.boss.flipped ? -1 : 1;
+            const offsetX = -15 * xscale;
+
+            drawImage(ctx, sprites.boss.death.get(Math.clamp(this.timer, 0, this.freezeDuration - 0.01)), this.boss.position.x + offsetX, this.boss.position.y + offsetY, xscale * scale, scale);
+
+            if (this.timer >= this.freezeDuration) {
+                this.timer = 0;
+                this.state = "WinExit";
+            }
+        } else if (this.state === "WinExit") {
+            const t = Math.clamp01(this.timer / this.exitDuration);
+
+            {
+                const w = this.renderer.canvas.width / camera.scaleFactor;
+                const hx = w / 2;
+                const h = this.renderer.canvas.height / camera.scaleFactor;
+                const hy = h / 2;
+
+                ctx.fillStyle = `rgba(0, 0, 0, 1)`;
+                ctx.fillRect(camera.position.x - hx, camera.position.y - hy, w, h);
+            }
+
+            ctx.globalAlpha = 1 - t;
+
+            const scale = 1.4;
+            const offsetY = 55;
+
+            const xscale = this.boss.flipped ? -1 : 1;
+            const offsetX = -15 * xscale;
+
+            drawImage(ctx, sprites.boss.death.get(this.freezeDuration - 0.01), this.boss.position.x + offsetX, this.boss.position.y + offsetY, xscale * scale, scale);
+
+            ctx.globalAlpha = 1;
+
+            if (this.timer > this.exitDuration) {
+                this.end("Exit");
             }
         }
     }
@@ -845,6 +953,7 @@ export class GameplayPlay extends GameplayState {
     public uiDraw() {
         const ctx = this.renderer.ctx;
         const canvas = this.renderer.canvas;
+        const camera = this.gameplay.camera;
 
         if (this.state === "Fight") {
             const t = Math.clamp01(this.timeInFight / 1);
@@ -859,7 +968,29 @@ export class GameplayPlay extends GameplayState {
             ctx.scale(this.gameplay.camera.scaleFactor, -this.gameplay.camera.scaleFactor)
             drawText(ctx, `${timeLeft.toFixed(2)}`, 240, 150);
             ctx.restore();
+
+            const scale = 3;
+            ctx.save()
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.scale(camera.scaleFactor, -camera.scaleFactor);
+
+            const maxHealth = 5000;
+            const w = 360 * Math.clamp01(this.boss.health / 5000);
+            const h = 14;
+            ctx.fillStyle = `rgba(220, 0, 0, ${t})`;
+            ctx.fillRect(-180, -h / 2 + camera.size.y / 2 - 38, w, h);
+
+            ctx.fillStyle = `rgba(180, 0, 0, ${t})`;
+            ctx.fillRect(-180, -h / 2 + camera.size.y / 2 - 38, w, h / 2);
+
+            ctx.globalAlpha = t;
+            drawImage(ctx, sprites.ui.bossbar, 0, camera.size.y / 2 - 50, scale, scale);
+            ctx.globalAlpha = 1;
+
+            ctx.restore();
         }
+
+
     }
 
     private drawBoss(time: number, dt: number, ctx: CanvasRenderingContext2D) {
@@ -918,7 +1049,7 @@ export class GameplayPlay extends GameplayState {
                 offset = this.player.offset * (1 - t) - t * 5;
 
                 if (this.player.fallingTimer > this.player.fallingDuration) {
-                    this.lose("Exit");
+                    this.end("Exit");
                 }
             }
 
@@ -931,11 +1062,17 @@ export class GameplayPlay extends GameplayState {
     freezeDuration = sprites.statue.topLeftIdle.duration;
     loseDuration = 1;
     exitDuration = 1;
-    public lose(to: "Exit" | "Lose") {
+    public end(to: "Exit" | "Lose" | "Win") {
         if (this.gameState === undefined) throw new Error("No save state!");
 
-        this.state = "Lose";
+        this.state = to;
         this.timer = 0;
+
+        if (to === "Lose") {
+            this.freezeDuration = sprites.statue.topLeftIdle.duration;
+        } else if (to === "Win") {
+            this.freezeDuration = sprites.boss.death.duration;
+        }
 
         if (to === "Exit") {
             // TODO, add some stat object containing stats like damage done etc...
@@ -954,6 +1091,7 @@ export class GameplayPlay extends GameplayState {
                         health: 5,
                     });
                 }
+                this.gameState.bossHealth = this.boss.health;
                 const nextState = JSON.stringify(this.gameState);
 
                 fetch("/ancientgeese/api/finish", {
@@ -965,6 +1103,7 @@ export class GameplayPlay extends GameplayState {
                 });
                 this.gameplay.gameplayExit.enter(this.gameState);
             } else {
+                this.gameState.bossHealth = this.boss.health;
                 this.gameplay.gameplayExit.enter(this.gameState);
             }
 
@@ -982,11 +1121,13 @@ class GameplayExit extends GameplayState {
     private timer: number = 0;
     private bobTimer: number = 0;
     private crsid: CRSID | undefined = undefined;
+    private gameState: GameState = undefined!;
 
     public enter(gameState: GameState) {
         this.gameplay.game.mode = "Gameplay";
         this.gameplay.state = "Exit"
         this.gameplay.gameState = gameState;
+        this.gameState = gameState;
         this.crsid = this.gameplay.gameState.crsid;
 
         Vec2.zero(this.gameplay.camera.position);
@@ -1007,6 +1148,11 @@ class GameplayExit extends GameplayState {
 
     public draw(time: number, dt: number) {
         if (!this.crsid) throw new Error("No crsid!");
+
+        const win = this.gameState.bossHealth <= 0;
+        const title = win ? `Congratulations ${this.crsid.name}!` : `In memory of ${this.crsid.name}...`;
+        const desc1 = win ? `You have slain the beast.` : `You did X damage.`;
+        const desc2 = win ? `You did X damage` : `Some random phrase.`;
 
         const ctx = this.renderer.ctx;
         const camera = this.gameplay.camera;
@@ -1054,7 +1200,7 @@ class GameplayExit extends GameplayState {
 
             ctx.font = "25px INET";
             ctx.fillStyle = `rgba(255, 255, 255, ${t})`;
-            drawText(ctx, `In memory of ${this.crsid.name}...`, 0, 75);
+            drawText(ctx, title, 0, 75);
 
             if (this.timer > this.welcomeDuration) {
                 this.state = "ClassReveal";
@@ -1065,12 +1211,12 @@ class GameplayExit extends GameplayState {
 
             ctx.font = "25px INET";
             ctx.fillStyle = `rgba(255, 255, 255, 1)`;
-            drawText(ctx, `In memory of ${this.crsid.name}...`, 0, 75);
+            drawText(ctx, title, 0, 75);
 
             ctx.font = "25px INET";
             ctx.fillStyle = `rgba(255, 255, 255, ${t})`;
-            drawText(ctx, `You did X damage!`, 0, -75);
-            drawText(ctx, `Some other phrase!`, 0, -100);
+            drawText(ctx, desc1, 0, -75);
+            drawText(ctx, desc2, 0, -100);
 
             if (this.timer > this.classDuration) {
                 this.state = "Exit";
@@ -1081,12 +1227,12 @@ class GameplayExit extends GameplayState {
 
             ctx.font = "25px INET";
             ctx.fillStyle = `rgba(255, 255, 255, ${1 - t})`;
-            drawText(ctx, `In memory of ${this.crsid.name}...`, 0, 75);
+            drawText(ctx, title, 0, 75);
 
             ctx.font = "25px INET";
             ctx.fillStyle = `rgba(255, 255, 255, ${1 - t})`;
-            drawText(ctx, `You did X damage!`, 0, -75);
-            drawText(ctx, `Some other phrase!`, 0, -100);
+            drawText(ctx, desc1, 0, -75);
+            drawText(ctx, desc2, 0, -100);
 
             // Animated duck
             let idx = Math.floor((time * 2) % 4);
@@ -1141,10 +1287,12 @@ export class Gameplay {
     }
 
     public draw(time: number, dt: number) {
+        const ctx = this.renderer.ctx;
+        tickAllEffects(this.camera, ctx, dt);
+
         this.camera.start();
 
         // Clear screen
-        const ctx = this.renderer.ctx;
         const w = this.renderer.canvas.width / this.camera.scaleFactor;
         const hx = w / 2;
         const h = this.renderer.canvas.height / this.camera.scaleFactor;
