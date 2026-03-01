@@ -25,3 +25,14 @@ app.upgrade("/", (match, req, socket, head) => {
         webSocketServer.emit("connection", ws, req);
     });
 });
+
+app.route("POST", "/start", async (match, req, res, url) => {
+    if (!url.searchParams.has("id")) {
+        res.statusCode = 500;
+        res.end("no user id provided");
+        return;
+    }
+    console.log(`user registered ${url.searchParams.get("id")}`);
+    res.statusCode = 200;
+    res.end("registered");
+});
