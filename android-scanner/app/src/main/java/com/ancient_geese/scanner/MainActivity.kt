@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.IntentCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
@@ -37,6 +38,7 @@ class MainActivity : ComponentActivity() {
     private var nfcAdapter: NfcAdapter? = null
     private lateinit var pendingIntent: PendingIntent
 
+    private var nfcDisplayMessage by mutableStateOf("Tap card to begin")
 
     private val scanQrCodeLauncher = registerForActivityResult(ScanQRCode()) { result ->
         when (result) {
@@ -122,15 +124,11 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
 
-        nfcDisplayMessage = "Detected tag..."
-
-        val action = intent.action
-
         if (NfcAdapter.ACTION_TAG_DISCOVERED == intent.action) {
             val tag = IntentCompat.getParcelableExtra(intent, NfcAdapter.EXTRA_TAG, Tag::class.java)
             tag?.let {
                 lifecycleScope.launch {
-                    nfcDisplayMessage = "Reading..."
+                    nfcDisplayMessage = "Reading tag..."
                     val result = extractUserID(it)
                     nfcDisplayMessage = result ?: "Read failed: No data found"
                 }
@@ -146,6 +144,7 @@ fun Message(message: String, modifier: Modifier = Modifier) {
         modifier = modifier
             .height(120.dp)
             .padding(8.dp),
+        style = androidx.compose.ui.text.TextStyle(fontSize = 28.sp)
     )
 }
 
