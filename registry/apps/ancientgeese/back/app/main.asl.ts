@@ -85,7 +85,7 @@ let nextState: GameState = {
     runId: 0,
     crsid: undefined!,
     rngSeed: 10,
-    bossHealth: 5000,
+    bossHealth: 1,
     deadBodies: []
 };
 if (await fileStat(NEXT_STATE_PATH)) {
@@ -322,6 +322,44 @@ app.route("GET", "/api/start", async (match, req, res, url) => {
 
         res.statusCode = 200;
         res.end("Done!");
+    } catch (ex) {
+        res.statusCode = 500;
+        res.end(`Something went wrong!`);
+        console.error(ex);
+    } finally {
+        await client.unbind();
+    }
+});
+
+app.route("GET", "/api/name", async (match, req, res, url) => {
+    if (!url.searchParams.has("id")) {
+        res.statusCode = 500;
+        res.end("Already in game.");
+        return;
+    }
+
+    const id = url.searchParams.get("id")!.toLowerCase();
+
+    const bindDN = `ou=people,o=University of Cambridge,dc=cam,dc=ac,dc=uk`;
+    const searchDN = 'ou=people,o=University of Cambridge,dc=cam,dc=ac,dc=uk';
+
+    const client = new Client({
+        url: `ldaps://ldap.lookup.cam.ac.uk`
+    });
+
+    try {
+        await client.bind(bindDN);
+
+        const { searchEntries } = await client.search(searchDN, {
+            scope: 'sub',
+            filter: `(uid=${id})`,
+        });
+
+        const result = searchEntries[0];
+        if (!result) throw new Error(`No person with the given ID: ${id}!`);
+
+        res.statusCode = 200;
+        res.end(`${result.givenName} ${result.sn}`);
     } catch (ex) {
         res.statusCode = 500;
         res.end(`Something went wrong!`);

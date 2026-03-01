@@ -611,6 +611,7 @@ export class GameplayPlay extends GameplayState {
     private boss: Boss = new Boss();
 
     private triggerAudio = false;
+    private explodeTimer = 0;
 
     public draw(time: number, dt: number) {
         if (!this.gameState) throw new Error("No gameplay save state!");
@@ -955,6 +956,15 @@ export class GameplayPlay extends GameplayState {
 
             const xscale = this.boss.flipped ? -1 : 1;
             const offsetX = -15 * xscale;
+
+            this.explodeTimer -= dt;
+            if (this.explodeTimer <= 0) {
+                const e = new ParticleEffect(sprites.effects.explosion);
+                e.position.x = (Math.random() * 2 - 1) * 50 + this.boss.position.x;
+                e.position.y = (Math.random() * 2 - 1) * 50 + this.boss.position.y + offsetY;
+                e.scale = Math.random() * 2;
+                this.explodeTimer = 0.01;
+            }
 
             drawImage(ctx, sprites.boss.death.get(Math.clamp(this.timer, 0, this.freezeDuration - 0.01)), this.boss.position.x + offsetX, this.boss.position.y + offsetY, xscale * scale, scale);
 

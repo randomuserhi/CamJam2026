@@ -32,6 +32,9 @@ interface Row {
     sprite: HTMLImageElement;
 
     resize(): void; 
+
+    names: HTMLSpanElement[];
+    dmg: HTMLSpanElement[];
 }
 
 export const Row = html.wc((sprite: HTMLImageElement, offset: number = 100) => {
@@ -41,28 +44,28 @@ export const Row = html.wc((sprite: HTMLImageElement, offset: number = 100) => {
         <canvas m-id="canvas" class="${style.wrapper}" style="z-index: -1;"></canvas>
         <ul style="display: flex; flex-direction: column; z-index: 1000; color: black; min-width: 350px; gap: 35px; margin-top: ${offset.toString()}px;">
             <li style="display: flex; align-items: left; gap: 10px;">
-                <span style="flex: 4">NAME</span>
-                <span style="flex: 1">DAMAGE</span>
+                <span m-id="names" style="flex: 4">NAME</span>
+                <span m-id="dmg" style="flex: 1">DAMAGE</span>
             </li>
             <li style="display: flex; align-items: left; gap: 10px;">
-                <span style="flex: 4">NAME</span>
-                <span style="flex: 1">POINTS</span>
+                <span m-id="names" style="flex: 4">NAME</span>
+                <span m-id="dmg" style="flex: 1">DAMAGE</span>
             </li>
             <li style="display: flex; align-items: left; gap: 10px;">
-                <span style="flex: 4">NAME</span>
-                <span style="flex: 1">POINTS</span>
+                <span m-id="names" style="flex: 4">NAME</span>
+                <span m-id="dmg" style="flex: 1">DAMAGE</span>
             </li>
             <li style="display: flex; align-items: left; gap: 10px;">
-                <span style="flex: 4">NAME</span>
-                <span style="flex: 1">POINTS</span>
+                <span m-id="names" style="flex: 4">NAME</span>
+                <span m-id="dmg" style="flex: 1">DAMAGE</span>
             </li>
             <li style="display: flex; align-items: left; gap: 10px;">
-                <span style="flex: 4">NAME</span>
-                <span style="flex: 1">POINTS</span>
+                <span m-id="names" style="flex: 4">NAME</span>
+                <span m-id="dmg" style="flex: 1">DAMAGE</span>
             </li>
             <li style="display: flex; align-items: left; gap: 10px;">
-                <span style="flex: 4">NAME</span>
-                <span style="flex: 1">POINTS</span>
+                <span m-id="names" style="flex: 4">NAME</span>
+                <span m-id="dmg" style="flex: 1">DAMAGE</span>
             </li>
         </ul>
     </div>
