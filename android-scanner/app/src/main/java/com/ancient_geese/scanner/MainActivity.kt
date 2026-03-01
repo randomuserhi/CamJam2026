@@ -168,10 +168,10 @@ class MainActivity : ComponentActivity() {
                 return@launch
             }
             val encodedId = URLEncoder.encode(userId, "UTF-8")
-            val requestUrl = serverUrl.trimEnd('/') + "/game/start?id=$encodedId"
+            val requestUrl = serverUrl.trimEnd('/') + "/ancientgeese/api/start?id=$encodedId"
             try {
                 val connection = URL(requestUrl).openConnection() as HttpURLConnection
-                connection.requestMethod = "POST"
+                connection.requestMethod = "GET"
                 connection.connectTimeout = 3000
 
                 val responseCode = connection.responseCode
