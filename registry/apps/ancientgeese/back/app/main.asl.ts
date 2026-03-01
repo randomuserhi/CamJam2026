@@ -256,6 +256,21 @@ function countQuacks() {
     return out;
 }
 
+function playersWithZeroDamage() {
+    const out: CRSID[] = [];
+    for (const value of Object.values(crsidMap)) {
+        const state: GameState = JSON.parse(value.replay);
+        if (value.stats.damageDealt == 0) {
+            out.push(state.crsid);
+        }
+    }
+    return out;
+}
+
+function playerCount() {
+    return Object.entries(crsidMap).length;
+}
+
 app.route("GET", "/api/start", async (match, req, res, url) => {
     if (inGame || !url.searchParams.has("id")) {
         res.statusCode = 500;
