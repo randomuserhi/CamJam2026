@@ -1,11 +1,13 @@
+import { CSRID } from "../crsid.asl";
+
 export interface Stats {
     damageDealt: number;
-    statuesDestroyed: number;
+    statuesDestroyed: CSRID[];
 }
 
 export function createStat(): Stats {
     return {
         damageDealt: 0,
-        statuesDestroyed: 0
+        statuesDestroyed: []
     }
 }

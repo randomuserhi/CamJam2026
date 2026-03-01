@@ -544,7 +544,7 @@ export class GameplayPlay extends GameplayState {
             if (ref.health > 0) this.deadBodyObstructions.push(d);
             else if (!ref.isBroken) {
                 ref.isBroken = true;
-                this.stat.statuesDestroyed += 1;
+                this.stat.statuesDestroyed.push(ref.crsid);
             }
         }
         this.deadBodyObstructions.swap();
