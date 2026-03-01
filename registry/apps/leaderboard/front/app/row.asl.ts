@@ -39,7 +39,7 @@ export const Row = html.wc((sprite: HTMLImageElement, offset: number = 100) => {
     const comp = html(proto) <Row>`
     <div m-id="picky" style="font-size: 50px; font-family: INET; position: relative; width: 100%; height: 500px; display: flex; flex-direction: column; align-items: center;">
         <canvas m-id="canvas" class="${style.wrapper}" style="z-index: -1;"></canvas>
-        <ul style="display: flex; flex-direction: column; z-index: 1000; color: white; min-width: 350px; gap: 35px; margin-top: ${offset.toString()}px;">
+        <ul style="display: flex; flex-direction: column; z-index: 1000; color: black; min-width: 350px; gap: 35px; margin-top: ${offset.toString()}px;">
             <li style="display: flex; align-items: left; gap: 10px;">
                 <span style="flex: 4">NAME</span>
                 <span style="flex: 1">DAMAGE</span>
