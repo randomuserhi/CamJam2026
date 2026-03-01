@@ -5,6 +5,7 @@ import android.content.Intent
 import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.os.Bundle
+import android.widget.Toast
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -26,19 +27,27 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.IntentCompat
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.ancient_geese.scanner.ui.theme.ScannerTheme
 import io.github.g00fy2.quickie.QRResult
 import io.github.g00fy2.quickie.ScanQRCode
+import java.net.HttpURLConnection
+import java.net.URLEncoder
+import java.net.Proxy
+import java.net.URL
 
 class MainActivity : ComponentActivity() {
     private var showServerUrlInput by mutableStateOf(false)
     private var serverUrl by mutableStateOf("")
+    private var showStartButton by mutableStateOf(false) // Change to your condition
 
     private var nfcAdapter: NfcAdapter? = null
     private lateinit var pendingIntent: PendingIntent
 
-    private var nfcDisplayMessage by mutableStateOf("Tap card to begin")
+    private var userId: String? = null
+    private var statusMessage by mutableStateOf("Tap card to begin")
 
     private val scanQrCodeLauncher = registerForActivityResult(ScanQRCode()) { result ->
         when (result) {
@@ -72,7 +81,21 @@ class MainActivity : ComponentActivity() {
                         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
                     ) {
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
-                        Message(message = nfcDisplayMessage)
+                        Message(message = statusMessage)
+                        if (showStartButton) {
+                            androidx.compose.material3.Button(
+                                onClick = {
+                                    if (serverUrl.isBlank()) {
+                                        Toast.makeText(this@MainActivity, "Set a server URL first", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        register()
+                                    }
+                                },
+                                modifier = Modifier.padding(top = 8.dp)
+                            ) {
+                                androidx.compose.material3.Text("Register for game")
+                            }
+                        }
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
                         // Bottom content
                         androidx.compose.foundation.layout.Box(
@@ -128,9 +151,40 @@ class MainActivity : ComponentActivity() {
             val tag = IntentCompat.getParcelableExtra(intent, NfcAdapter.EXTRA_TAG, Tag::class.java)
             tag?.let {
                 lifecycleScope.launch {
-                    nfcDisplayMessage = "Reading tag..."
+                    statusMessage = "Reading tag..."
                     val result = extractUserID(it)
-                    nfcDisplayMessage = result ?: "Read failed: No data found"
+                    userId = result
+                    statusMessage = result ?: "Read failed: No data found"
+                    showStartButton = result != null
+                }
+            }
+        }
+    }
+
+    fun register() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            if (userId == null) {
+                Log.e("SCANNER", "Tried to register with empty id")
+                return@launch
+            }
+            val encodedId = URLEncoder.encode(userId, "UTF-8")
+            val requestUrl = serverUrl.trimEnd('/') + "/game/start?id=$encodedId"
+            try {
+                val connection = URL(requestUrl).openConnection() as HttpURLConnection
+                connection.requestMethod = "POST"
+                connection.connectTimeout = 3000
+
+                val responseCode = connection.responseCode
+                connection.disconnect()
+                val ok = responseCode in 200..299
+                withContext(Dispatchers.Main) {
+                    statusMessage = if (ok) "Registered" else "Register failed for ${userId}"
+                    showStartButton = !ok
+                }
+            } catch (e: Exception) {
+                Log.e("SCANNER", "Register request error ${requestUrl}", e)
+                withContext(Dispatchers.Main) {
+                    statusMessage = "Register error"
                 }
             }
         }
