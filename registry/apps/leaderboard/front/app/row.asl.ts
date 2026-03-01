@@ -23,7 +23,7 @@ const style = Style(({ css }) => {
 interface Row {
     canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D;
-    
+
     picky: HTMLDivElement;
 
     size: { x: number, y: number };
@@ -31,7 +31,7 @@ interface Row {
 
     sprite: HTMLImageElement;
 
-    resize(): void; 
+    resize(): void;
 
     names: HTMLSpanElement[];
     dmg: HTMLSpanElement[];
@@ -40,7 +40,7 @@ interface Row {
 export const Row = html.wc((sprite: HTMLImageElement, offset: number = 100) => {
     const proto: object = Row.prototype;
     const comp = html(proto) <Row>`
-    <div m-id="picky" style="font-size: 50px; font-family: INET; position: relative; width: 100%; height: 500px; display: flex; flex-direction: column; align-items: center;">
+    <div m-id="picky" style="font-size: 40px; font-family: INET; position: relative; width: 100%; height: 500px; display: flex; flex-direction: column; align-items: center;">
         <canvas m-id="canvas" class="${style.wrapper}" style="z-index: -1;"></canvas>
         <ul style="display: flex; flex-direction: column; z-index: 1000; color: black; min-width: 350px; gap: 35px; margin-top: ${offset.toString()}px;">
             <li style="display: flex; align-items: left; gap: 10px;">

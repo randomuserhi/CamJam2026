@@ -929,6 +929,15 @@ export class GameplayPlay extends GameplayState {
 
             this.boss.draw(0, 0, ctx);
 
+            this.explodeTimer -= dt;
+            if (this.explodeTimer <= 0) {
+                const e = new ParticleEffect(sprites.effects.explosion);
+                e.position.x = (Math.random() * 2 - 1) * 50 + this.boss.position.x;
+                e.position.y = (Math.random() * 2 - 1) * 50 + this.boss.position.y + offsetY;
+                e.scale = Math.random() * 2;
+                this.explodeTimer = 0.01;
+            }
+
             if (this.timer > this.loseDuration) {
                 this.state = "WinFreeze";
                 this.timer = 0;
@@ -1226,7 +1235,8 @@ class GameplayExit extends GameplayState {
 
         const win = this.gameState.bossHealth <= 0;
         const title = win ? `Congratulations ${this.crsid.name}!` : `A valient effort mighty ${this.crsid.name}.`;
-        const desc = win ? `The serpent-necked terror is no more, Megoosa, has been slain.\nYou dealt ${this.stat.damageDealt} damage.` : `You dealt ${this.stat.damageDealt} damage.`;
+        const desc = win ? `The serpent-necked terror is no more, Megoosa, has been slain.` : `You dealt ${this.stat.damageDealt} damage.`;
+        const desc2 = win ? `You dealt ${this.stat.damageDealt} damage.` : ``;
 
         const ctx = this.renderer.ctx;
         const camera = this.gameplay.camera;
@@ -1293,6 +1303,7 @@ class GameplayExit extends GameplayState {
             ctx.fillStyle = `rgba(255, 255, 255, ${t})`;
             ctx.textAlign = "center";
             drawText(ctx, desc, 0, -75);
+            drawText(ctx, desc2, 0, -95);
 
             if (this.timer > this.classDuration) {
                 this.state = "Exit";
@@ -1310,6 +1321,7 @@ class GameplayExit extends GameplayState {
             ctx.fillStyle = `rgba(255, 255, 255, ${1 - t})`;
             ctx.textAlign = "center";
             drawText(ctx, desc, 0, -75);
+            drawText(ctx, desc2, 0, -95);
 
             // Animated duck
             let idx = Math.floor((time * 2) % 4);

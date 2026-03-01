@@ -27,10 +27,6 @@ interface App {
     crazy: HTMLDivElement;
 }
 
-const row = () => {
-    return html`<canvas></canvas>`;
-}
-
 const resp = await fetch("/ancientgeese/api/leaderboard");
 const data = await resp.json();
 const entries = Object.entries(data).sort((a, b) => (b[1] as any).stats.damageDealt - (a[1] as any).stats.damageDealt);
@@ -54,7 +50,7 @@ const App = html.wc(() => {
 
     let start = true;
     for (let i = 0; i < entries.length;) {
-        
+
         const row = Row(start ? sprites.top : i % 2 == 0 ? sprites.middle2 : sprites.middle1);
         for (let j = 0; i < entries.length && j < 6; ++i, ++j) {
             const e = entries[i];
@@ -65,6 +61,9 @@ const App = html.wc(() => {
         comp.crazy.append(...row);
         start = false;
     }
+
+    comp.crazy.append(...Row(sprites.middle2));
+    comp.crazy.append(...Row(sprites.middle1));
 
     return comp;
 });

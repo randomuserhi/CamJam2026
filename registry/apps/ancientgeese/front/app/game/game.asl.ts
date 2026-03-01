@@ -11,10 +11,15 @@ export class Game {
     public readonly renderer: Renderer;
 
     public inReplayMode = false;
-    public async replayMode() {
-        this.inReplayMode = true;
-        const resp = await fetch(`/ancientgeese/api/replay`, { method: "GET" });
-        this.menu.exit(await resp.json());
+    public async replayMode(id?: number) {
+        if (id === undefined) {
+            this.inReplayMode = true;
+            const resp = await fetch(`/ancientgeese/api/replay`, { method: "GET" });
+            this.menu.exit(await resp.json());
+        } else {
+            const resp = await fetch(`/ancientgeese/api/replay?id=${id}`, { method: "GET" });
+            this.menu.exit(await resp.json());
+        }
     }
 
     public mode: "Gameplay" | "Menu" = "Menu";

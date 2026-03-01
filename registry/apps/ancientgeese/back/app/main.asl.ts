@@ -109,11 +109,15 @@ app.route("GET", "/api/leaderboard", async (match, req, res) => {
 });
 
 app.route("GET", "/api/replay", async (match, req, res, url) => {
-    const entries = Object.entries(crsidMap);
-    const len = entries.length;
-    let id = Math.floor(Math.random() * len);
-    if (id >= len) id = len - 1;
-    app.serve(path.join(PATH, "replays", entries[id][1].replay), res);
+    if (url.searchParams.has("id")) {
+        app.serve(path.join(PATH, "replays", `${url.searchParams.get("id")!.padStart(4, "0")}.json`), res);
+    } else {
+        const entries = Object.entries(crsidMap);
+        const len = entries.length;
+        let id = Math.floor(Math.random() * len);
+        if (id >= len) id = len - 1;
+        app.serve(path.join(PATH, "replays", entries[id][1].replay), res);
+    }
 });
 
 app.route("POST", "/api/finish", async (match, req, res, url) => {
@@ -238,7 +242,7 @@ const hatTerms = [
 ];
 
 function countQuacks() {
-    const out: { [key:string] : number } = {};
+    const out: { [key: string]: number } = {};
     for (const [id, value] of Object.entries(crsidMap)) {
         const state: GameState = JSON.parse(value.replay);
         let count = 0;
