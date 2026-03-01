@@ -10,6 +10,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -19,17 +22,30 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.core.content.IntentCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import com.ancient_geese.scanner.ui.theme.ScannerTheme
+import io.github.g00fy2.quickie.QRResult
+import io.github.g00fy2.quickie.ScanQRCode
 
 class MainActivity : ComponentActivity() {
+    private var showServerUrlInput by mutableStateOf(false)
+    private var serverUrl by mutableStateOf("")
 
     private var nfcAdapter: NfcAdapter? = null
     private lateinit var pendingIntent: PendingIntent
 
-    private var nfcDisplayMessage by mutableStateOf("Hello world, Key: " + BuildConfig.SCANNER_NFC_KEY)
+
+    private val scanQrCodeLauncher = registerForActivityResult(ScanQRCode()) { result ->
+        when (result) {
+            is QRResult.QRSuccess -> {
+                serverUrl = result.content.rawValue?.trim().orEmpty()
+            }
+            else -> Log.d("SCANNER", "ScanQRCode result was not a success")
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,10 +62,48 @@ class MainActivity : ComponentActivity() {
         setContent {
             ScannerTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Message(
-                        message = nfcDisplayMessage,
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                    androidx.compose.foundation.layout.Column(
+                        modifier = Modifier
+                            .padding(innerPadding)
+                            .fillMaxSize(),
+                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
+                        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+                    ) {
+                        androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
+                        Message(message = nfcDisplayMessage)
+                        androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
+                        // Bottom content
+                        androidx.compose.foundation.layout.Box(
+                            modifier = Modifier
+                                .height(64.dp)
+                                .padding(bottom = 8.dp),
+                            contentAlignment = androidx.compose.ui.Alignment.Center
+                        ) {
+                            if (showServerUrlInput) {
+                                androidx.compose.material3.OutlinedTextField(
+                                    value = serverUrl,
+                                    onValueChange = { serverUrl = it },
+                                    label = { androidx.compose.material3.Text("Server URL") },
+                                    singleLine = true,
+                                    modifier = Modifier
+                                )
+                            }
+                        }
+                        androidx.compose.foundation.layout.Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .navigationBarsPadding()
+                                .padding(bottom = 80.dp),
+                            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceEvenly
+                        ) {
+                            androidx.compose.material3.Button(onClick = { scanQrCodeLauncher.launch(null) }) {
+                                androidx.compose.material3.Text("Scan QR Code")
+                            }
+                            androidx.compose.material3.Button(onClick = { showServerUrlInput = !showServerUrlInput }) {
+                                androidx.compose.material3.Text("Edit Server URL")
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -90,6 +144,8 @@ fun Message(message: String, modifier: Modifier = Modifier) {
     Text(
         text = message,
         modifier = modifier
+            .height(120.dp)
+            .padding(8.dp),
     )
 }
 
