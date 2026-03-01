@@ -6,4 +6,5 @@ export interface CSRID {
     name: string;
     college: string;
     classname: "Herbalist" | "Warrior" | "Wizard" | "Jacket";
+    id: string;
 }

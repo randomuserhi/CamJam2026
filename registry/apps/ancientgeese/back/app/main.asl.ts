@@ -298,3 +298,19 @@ app.route("GET", "/api/start", async (match, req, res, url) => {
         await client.unbind();
     }
 });
+
+app.route("POST", "api/saveSoul", async (match, req, res, url) => {
+    if (!inGame || !url.searchParams.has("player") || !url.searchParams.has("soul")) {
+        res.statusCode = 500;
+        res.end("Not in game.");
+        return;
+    }
+
+    const player = url.searchParams.get("player")!;
+    const soul = url.searchParams.get("soul")!;
+
+    console.log(`${player} saved the soul of ${soul}`);
+
+    res.statusCode = 200;
+    res.end("")
+})

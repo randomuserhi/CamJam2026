@@ -526,7 +526,11 @@ export class GameplayPlay extends GameplayState {
         for (const d of this.deadBodyObstructions.buffer) {
             const { collider, ref } = d;
             if (ref.health > 0) this.deadBodyObstructions.push(d);
-            else ref.isBroken = true;
+            else if (!ref.isBroken) {
+                ref.isBroken = true;
+                const query = new URLSearchParams({ soul: ref.crsid.id, player: this.gameState.crsid.id } as any).toString();
+                fetch(`/ancientgeese/api/saveSoul?${query}`, { method: "POST" });
+            }
         }
         this.deadBodyObstructions.swap();
 
