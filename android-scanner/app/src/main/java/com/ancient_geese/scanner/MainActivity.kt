@@ -2,6 +2,7 @@ package com.ancient_geese.scanner
 
 import android.app.PendingIntent
 import android.content.Intent
+import android.content.Context
 import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.os.Bundle
@@ -39,6 +40,11 @@ import java.net.Proxy
 import java.net.URL
 
 class MainActivity : ComponentActivity() {
+    companion object {
+        private const val PREFS_NAME = "scanner_prefs"
+        private const val KEY_SERVER_URL = "server_url"
+    }
+
     private var showServerUrlInput by mutableStateOf(false)
     private var serverUrl by mutableStateOf("")
 
@@ -46,12 +52,14 @@ class MainActivity : ComponentActivity() {
     private lateinit var pendingIntent: PendingIntent
 
     private var userId: String? = null
-    private var statusMessage by mutableStateOf("Tap card to begin")
+    private var statusMessage by mutableStateOf("Scan server url")
 
     private val scanQrCodeLauncher = registerForActivityResult(ScanQRCode()) { result ->
         when (result) {
             is QRResult.QRSuccess -> {
                 serverUrl = result.content.rawValue?.trim().orEmpty()
+                persistServerUrl(serverUrl)
+                statusMessage = "Tap card to begin"
             }
             else -> Log.d("SCANNER", "ScanQRCode result was not a success")
         }
@@ -59,6 +67,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        serverUrl = loadServerUrl()
 
         nfcAdapter = NfcAdapter.getDefaultAdapter(this)
 
@@ -92,7 +102,10 @@ class MainActivity : ComponentActivity() {
                             if (showServerUrlInput) {
                                 androidx.compose.material3.OutlinedTextField(
                                     value = serverUrl,
-                                    onValueChange = { serverUrl = it },
+                                    onValueChange = {
+                                        serverUrl = it
+                                        persistServerUrl(it)
+                                    },
                                     label = { androidx.compose.material3.Text("Server URL") },
                                     singleLine = true,
                                     modifier = Modifier
@@ -184,6 +197,19 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun persistServerUrl(value: String) {
+        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_SERVER_URL, value)
+            .apply()
+    }
+
+    private fun loadServerUrl(): String {
+        return getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(KEY_SERVER_URL, "")
+            .orEmpty()
     }
 }
 
