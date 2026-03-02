@@ -26,18 +26,21 @@ export class Boss {
     flipped: boolean = false;
 
     projectiles: DoubleBuffer<EnemyProjectile> = undefined!;
+    walkTimer: number = 0;
 
     public reset(camera: Camera, projectiles: DoubleBuffer<EnemyProjectile>) {
         this.projectiles = projectiles;
         this.upperBoundY = camera.size.y * 2 + camera.size.y / 2 - 150;
         this.lowerBoundY = camera.size.y * 2 - camera.size.y / 2 + 50;
 
+        this.walkTimer = 0;
+
         this.upperBoundX = camera.size.x / 2 - 50;
         this.lowerBoundX = -camera.size.x / 2 + 50;
 
         Vec2.set(0, camera.size.y * 2, this.position);
         this.state = "Scream";
-        this.projTimer = 0
+        this.projTimer = 0;
 
         Vec2.zero(this.velocity);
 
@@ -145,12 +148,13 @@ export class Boss {
                     this.enterDash();
             }
         } else if (this.state === "Walk") {
+            this.walkTimer += dt;
             Vec2.sub(this.destination, this.position, this.velocity);
             const dist = Vec2.sqrdMagnitude(this.velocity);
             Vec2.normalize(this.velocity, this.velocity);
             Vec2.scale(this.velocity, this.speed, this.velocity);
 
-            if (dist < 100) {
+            if (dist < 100 || this.walkTimer > 7.5) {
                 if (rand() > 0.5)
                     this.enterDash(); // enterDash
                 else
@@ -205,7 +209,7 @@ export class Boss {
     }
 
     private spawnProjectile(dir: Vec2, lifetime: number = 3) {
-        let projectile: Projectile = new EnemyProjectile();
+        const projectile: Projectile = new EnemyProjectile();
 
         Vec2.copy(this.position, projectile.position);
         projectile.position.y += 55;
@@ -236,6 +240,7 @@ export class Boss {
     destination: Vec2 = Vec2.zero();
 
     public enterWalk(rand: () => number) {
+        this.walkTimer = 0;
         const x = rand() * (this.upperBoundX - this.lowerBoundX) + this.lowerBoundX;
         const y = rand() * (this.upperBoundY - this.lowerBoundY) + this.lowerBoundY;
         Vec2.set(x, y, this.destination);
