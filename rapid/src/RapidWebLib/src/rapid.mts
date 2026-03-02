@@ -50,7 +50,7 @@ ASL_CONFIG.baseURL = new URL(window.location.origin);
 // TODO(randomuserhi): Fetch request from backend whether it is case sensitive or not via a Get Request
 //                     This must be awaited on as we cannot continue until we know if paths are case
 //                     sensitive or not to prevent malforming the registry.
-ASL_CONFIG.isCaseSensitive = false;
+ASL_CONFIG.isCaseSensitive = true;
 
 // Load config and trigger entry point as required
 
