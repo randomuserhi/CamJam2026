@@ -293,6 +293,7 @@ app.route("GET", "/api/start", async (match, req, res, url) => {
             inGame = false;
             res.statusCode = 200;
             res.end("No clients");
+            return;
         }
         res.statusCode = 200;
         res.end("Done!");
@@ -325,6 +326,7 @@ app.route("GET", "/api/start", async (match, req, res, url) => {
         inGame = false;
         res.statusCode = 200;
         res.end("No clients");
+        return;
     }
 
     res.statusCode = 200;

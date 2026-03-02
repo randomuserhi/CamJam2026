@@ -30,6 +30,17 @@ export class Game {
         this.renderer = new Renderer(canvas);
         this.menu = new Menu(this, this.renderer);
         this.gameplay = new Gameplay(this, this.renderer);
+
+        __ASL.onAbort(() => {
+            if (this.mode === "Gameplay") {
+                fetch("/ancientgeese/api/finish", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        wasReplay: true
+                    })
+                });
+            }
+        });
     }
 
     public tick(dt: number) {
