@@ -140,19 +140,20 @@ app.route("POST", "/api/finish", async (match, req, res, url) => {
         wasReplay: boolean;
     } = JSON.parse(body);
 
+    if (finishedRun.wasReplay) {
+        res.statusCode = 500;
+        res.end("Was replay");
+        inGame = false;
+        console.log("was replay, reset");
+        return;
+    }
+
     const replay = JSON.parse(finishedRun.replay);
     const name = `${replay.runId.toString().padStart(4, '0')}.json`;
 
     if (replay.crsid.id === "ceht2") {
         res.statusCode = 500;
         res.end("Master card");
-        inGame = false;
-        return;
-    }
-
-    if (finishedRun.wasReplay) {
-        res.statusCode = 500;
-        res.end("Was replay");
         inGame = false;
         return;
     }
