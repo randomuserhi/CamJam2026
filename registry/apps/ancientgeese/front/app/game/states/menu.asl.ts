@@ -5,8 +5,6 @@ import { Camera, Renderer } from "../renderer.asl";
 import { DuckBody, DuckHat, sprites } from "../sprites.asl";
 import { GameState } from "./savestate.asl";
 
-export const ws = new WebSocket(`ws://${window.location.host}/ancientgeese`);
-
 export class Menu {
     private camera: Camera;
     private renderer: Renderer;
@@ -24,10 +22,22 @@ export class Menu {
         this.camera = new Camera(this.renderer);
 
         this.enter();
+        this.connect();
+    }
 
-        ws.addEventListener("message", e => {
+    ws: WebSocket = undefined!;
+    private connect() {
+        if (this.ws && this.ws.readyState === this.ws.CONNECTING) return;
+        this.ws = new WebSocket(`ws://${window.location.host}/ancientgeese`);
+        this.ws.addEventListener("message", e => {
             this.exit(JSON.parse(e.data));
         }, { signal: __ASL.signal });
+        this.ws.addEventListener("close", e => {
+            setTimeout(() => this.connect(), 500);
+        });
+        this.ws.addEventListener("error", e => {
+            setTimeout(() => this.connect(), 500);
+        });
     }
 
     public enter() {
