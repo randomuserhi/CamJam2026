@@ -16,8 +16,9 @@ function broadcast(obj: any) {
     for (const client of webSocketServer.clients) {
         if (client.readyState !== client.OPEN) continue;
         client.send(JSON.stringify(obj));
-        break;
+        return true;
     }
+    return false;
 }
 
 app.route("GET", "/", async (match, req, res) => {
@@ -288,7 +289,11 @@ app.route("GET", "/api/start", async (match, req, res, url) => {
     const id = url.searchParams.get("id")!.toLowerCase();
 
     if (id in crsidMap) {
-        broadcast(JSON.parse(await fs.readFile(path.join(PATH, "replays", crsidMap[id].replay), { encoding: "utf-8" })));
+        if (!broadcast(JSON.parse(await fs.readFile(path.join(PATH, "replays", crsidMap[id].replay), { encoding: "utf-8" })))) {
+            inGame = false;
+            res.statusCode = 200;
+            res.end("No clients");
+        }
         res.statusCode = 200;
         res.end("Done!");
         return;
@@ -316,7 +321,11 @@ app.route("GET", "/api/start", async (match, req, res, url) => {
     };
 
     nextState.crsid = crsid;
-    broadcast(nextState);
+    if (!broadcast(nextState)) {
+        inGame = false;
+        res.statusCode = 200;
+        res.end("No clients");
+    }
 
     res.statusCode = 200;
     res.end("Done!");
