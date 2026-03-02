@@ -27,17 +27,17 @@ export class Menu {
 
     ws: WebSocket = undefined!;
     private connect() {
-        if (this.ws && this.ws.readyState === this.ws.CONNECTING) return;
+        if (this.ws && (this.ws.readyState === this.ws.CONNECTING || this.ws.readyState === this.ws.OPEN)) return;
         this.ws = new WebSocket(`ws://${window.location.host}/ancientgeese`);
         this.ws.addEventListener("message", e => {
             this.exit(JSON.parse(e.data));
         }, { signal: __ASL.signal });
         this.ws.addEventListener("close", e => {
             setTimeout(() => this.connect(), 500);
-        });
+        }, { signal: __ASL.signal, once: true });
         this.ws.addEventListener("error", e => {
             setTimeout(() => this.connect(), 500);
-        });
+        }, { signal: __ASL.signal, once: true });
         __ASL.onAbort(() => {
             this.ws.close();
         });

@@ -25,13 +25,13 @@ window.addEventListener("keydown", (e) => {
     case 68:
         keyboard.d = true;
         break;  
-    case 16:
+    case 32:
         keyboard.shift = true;
         break;  
     case 76:
         keyboard.l = true;
         break;  
-    case 32:
+    case 16:
         keyboard.space = true;
         break;  
     }
@@ -51,13 +51,13 @@ window.addEventListener("keyup", (e) => {
     case 68:
         keyboard.d = false;
         break;  
-    case 16:
+    case 32:
         keyboard.shift = false;
         break;  
     case 76:
         keyboard.l = false;
         break;  
-    case 32:
+    case 16:
         keyboard.space = false;
         break;  
     }
