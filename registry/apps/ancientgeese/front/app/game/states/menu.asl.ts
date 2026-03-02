@@ -5,8 +5,6 @@ import { Camera, Renderer } from "../renderer.asl";
 import { DuckBody, DuckHat, sprites } from "../sprites.asl";
 import { GameState } from "./savestate.asl";
 
-export const ws = new WebSocket(`ws://${window.location.host}/ancientgeese`);
-
 export class Menu {
     private camera: Camera;
     private renderer: Renderer;
@@ -24,10 +22,22 @@ export class Menu {
         this.camera = new Camera(this.renderer);
 
         this.enter();
+        this.connect();
+    }
 
-        ws.addEventListener("message", e => {
+    ws: WebSocket = undefined!;
+    private connect() {
+        if (this.ws && this.ws.readyState === this.ws.CONNECTING) return;
+        this.ws = new WebSocket(`ws://${window.location.host}/ancientgeese`);
+        this.ws.addEventListener("message", e => {
             this.exit(JSON.parse(e.data));
-        }, { signal: __ASL.signal })
+        }, { signal: __ASL.signal });
+        this.ws.addEventListener("close", e => {
+            setTimeout(() => this.connect(), 500);
+        });
+        this.ws.addEventListener("error", e => {
+            setTimeout(() => this.connect(), 500);
+        });
     }
 
     public enter() {
@@ -96,7 +106,7 @@ export class Menu {
             drawText(ctx, "Ancient Geese", 0, 0);*/
 
             // Animated duck
-            let idx = Math.floor((time * 2) % 4);
+            const idx = Math.floor((time * 2) % 4);
             const y = (1 - this.duckEnterCurve(t)) * 300 - 70 - 15;
             drawDuck(ctx, sprites.duck, time, idx, 0, y, 2);
             if (this.body !== "none") drawDuck(ctx, sprites.body[this.body], time, idx, 0, y, 2);
@@ -110,7 +120,7 @@ export class Menu {
             drawImage(ctx, sprites.menu.title, 0, 50, titleScale, titleScale);
 
             // Animated duck
-            let idx = Math.floor((time * 2) % 4);
+            const idx = Math.floor((time * 2) % 4);
             this.y = -70 - Math.sin(this.timer + Math.PI / 2) * 15;
             drawDuck(ctx, sprites.duck, time, idx, 0, this.y, 2);
             if (this.body !== "none") drawDuck(ctx, sprites.body[this.body], time, idx, 0, this.y, 2);
@@ -132,7 +142,7 @@ export class Menu {
             }
 
             // Draw duck
-            let idx = Math.floor((time * 2) % 4);
+            const idx = Math.floor((time * 2) % 4);
             drawDuck(ctx, sprites.duck, time, idx, 0, y, 2);
             if (this.body !== "none") drawDuck(ctx, sprites.body[this.body], time, idx, 0, y, 2);
             if (this.hat !== "none") drawDuck(ctx, sprites.hat[this.hat], time, idx, 0, y, 2);

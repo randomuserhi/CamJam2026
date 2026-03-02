@@ -1,9 +1,9 @@
+import { fileStat } from "common/lib/file.asl";
+import fs from "fs/promises";
+import path from "path";
 import { app } from "rapid";
 import { front } from "rapid/async-path";
 import { WebSocketServer } from "ws";
-import path from "path";
-import fs from "fs/promises";
-import { fileStat } from "common/lib/file.asl";
 
 const webSocketServer: WebSocketServer = new WebSocketServer({ noServer: true });
 __ASL.onAbort(() => {
@@ -89,12 +89,12 @@ let nextState: GameState = {
     deadBodies: []
 };
 if (await fileStat(NEXT_STATE_PATH)) {
-    nextState = JSON.parse(await fs.readFile(NEXT_STATE_PATH, { encoding: "utf-8" }))
+    nextState = JSON.parse(await fs.readFile(NEXT_STATE_PATH, { encoding: "utf-8" }));
 }
 
 let crsidMap: { [k: string]: { replay: string, stats: Stats } } = {};
 if (await fileStat(CRSID_MAP_PATH)) {
-    crsidMap = JSON.parse(await fs.readFile(CRSID_MAP_PATH, { encoding: "utf-8" }))
+    crsidMap = JSON.parse(await fs.readFile(CRSID_MAP_PATH, { encoding: "utf-8" }));
 }
 
 let inGame = false;
@@ -140,19 +140,19 @@ app.route("POST", "/api/finish", async (match, req, res, url) => {
         wasReplay: boolean;
     } = JSON.parse(body);
 
+    if (finishedRun.wasReplay) {
+        res.statusCode = 500;
+        res.end("Was replay");
+        inGame = false;
+        return;
+    }
+
     const replay = JSON.parse(finishedRun.replay);
     const name = `${replay.runId.toString().padStart(4, '0')}.json`;
 
     if (replay.crsid.id === "ceht2") {
         res.statusCode = 500;
-        res.end("Master card");
-        inGame = false;
-        return;
-    }
-
-    if (finishedRun.wasReplay) {
-        res.statusCode = 500;
-        res.end("Was replay");
+        res.end("Master card bruh");
         inGame = false;
         return;
     }
@@ -314,7 +314,7 @@ app.route("GET", "/api/start", async (match, req, res, url) => {
         let hat: DuckHat = "none";
         let college: string = "UNKNOWN";
 
-        let ou = typeof result.ou === "string" ? [result.ou] : result.ou;
+        const ou = typeof result.ou === "string" ? [result.ou] : result.ou;
         for (let i = 0; i < hatTerms.length; ++i) {
             const includes = hatTerms[i];
             for (const term of ou) {
@@ -340,10 +340,10 @@ app.route("GET", "/api/start", async (match, req, res, url) => {
 
         let body: DuckBody = "mage";
         switch (classname) {
-            case "Herbalist": body = "herbalist"; break;
-            case "Warrior": body = "warrior"; break;
-            case "Wizard": body = "mage"; break;
-            case "Jacket": body = "jacket"; break;
+        case "Herbalist": body = "herbalist"; break;
+        case "Warrior": body = "warrior"; break;
+        case "Wizard": body = "mage"; break;
+        case "Jacket": body = "jacket"; break;
         }
 
         const crsid: CRSID = {
@@ -353,7 +353,7 @@ app.route("GET", "/api/start", async (match, req, res, url) => {
             classname,
             hat,
             id
-        }
+        };
 
         nextState.crsid = crsid;
         broadcast(nextState);

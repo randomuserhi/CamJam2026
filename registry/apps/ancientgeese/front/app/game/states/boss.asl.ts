@@ -37,7 +37,7 @@ export class Boss {
 
         Vec2.set(0, camera.size.y * 2, this.position);
         this.state = "Scream";
-        this.projTimer = 0
+        this.projTimer = 0;
 
         Vec2.zero(this.velocity);
 
@@ -56,6 +56,7 @@ export class Boss {
 
         this.firstScream = true;
         this.doSpiralShoot = false;
+        this.walkTimer = 0;
     }
 
     state: "Scream" | "Dash" | "Walk" = "Scream";
@@ -145,12 +146,13 @@ export class Boss {
                     this.enterDash();
             }
         } else if (this.state === "Walk") {
+            this.walkTimer += dt;
             Vec2.sub(this.destination, this.position, this.velocity);
             const dist = Vec2.sqrdMagnitude(this.velocity);
             Vec2.normalize(this.velocity, this.velocity);
             Vec2.scale(this.velocity, this.speed, this.velocity);
 
-            if (dist < 100) {
+            if (dist < 100 || this.walkTimer > 7.5) {
                 if (rand() > 0.5)
                     this.enterDash(); // enterDash
                 else
@@ -205,7 +207,7 @@ export class Boss {
     }
 
     private spawnProjectile(dir: Vec2, lifetime: number = 3) {
-        let projectile: Projectile = new EnemyProjectile();
+        const projectile: Projectile = new EnemyProjectile();
 
         Vec2.copy(this.position, projectile.position);
         projectile.position.y += 55;
@@ -235,11 +237,14 @@ export class Boss {
 
     destination: Vec2 = Vec2.zero();
 
+    walkTimer = 0;
     public enterWalk(rand: () => number) {
         const x = rand() * (this.upperBoundX - this.lowerBoundX) + this.lowerBoundX;
         const y = rand() * (this.upperBoundY - this.lowerBoundY) + this.lowerBoundY;
         Vec2.set(x, y, this.destination);
         this.state = "Walk";
+
+        this.walkTimer = 0;
 
         if (this.dirToTarget.x > 0) this.flipped = true;
         else this.flipped = false;

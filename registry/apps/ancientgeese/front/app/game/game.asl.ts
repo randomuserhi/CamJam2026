@@ -34,23 +34,23 @@ export class Game {
 
     public tick(dt: number) {
         switch (this.mode) {
-            case "Gameplay":
-                this.gameplay.tick(dt);
-                break;
-            case "Menu":
-                this.menu.tick(dt);
-                break;
+        case "Gameplay":
+            this.gameplay.tick(dt);
+            break;
+        case "Menu":
+            this.menu.tick(dt);
+            break;
         }
     }
 
     public draw(time: number, dt: number) {
         switch (this.mode) {
-            case "Gameplay":
-                this.gameplay.draw(time, dt);
-                break;
-            case "Menu":
-                this.menu.draw(time, dt);
-                break;
+        case "Gameplay":
+            this.gameplay.draw(time, dt);
+            break;
+        case "Menu":
+            this.menu.draw(time, dt);
+            break;
         }
     }
 }
