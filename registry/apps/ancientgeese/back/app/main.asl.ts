@@ -5,6 +5,10 @@ import { app } from "rapid";
 import { front } from "rapid/async-path";
 import { WebSocketServer } from "ws";
 
+function notInGame() {
+    inGame = false;
+}
+
 const webSocketServer: WebSocketServer = new WebSocketServer({ noServer: true });
 __ASL.onAbort(() => {
     for (const client of webSocketServer.clients) {
@@ -16,6 +20,7 @@ function broadcast(obj: any) {
     for (const client of webSocketServer.clients) {
         if (client.readyState !== client.OPEN) continue;
         client.send(JSON.stringify(obj));
+        client.addEventListener("close", notInGame, { once: true });
         return true;
     }
     return false;
