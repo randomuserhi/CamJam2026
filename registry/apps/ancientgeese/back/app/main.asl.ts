@@ -16,8 +16,9 @@ function broadcast(obj: any) {
     for (const client of webSocketServer.clients) {
         if (client.readyState !== client.OPEN) continue;
         client.send(JSON.stringify(obj));
-        break;
+        return true;
     }
+    return false;
 }
 
 app.route("GET", "/", async (match, req, res) => {
@@ -85,7 +86,7 @@ let nextState: GameState = {
     runId: 0,
     crsid: undefined!,
     rngSeed: 10,
-    bossHealth: 500,
+    bossHealth: 5000,
     deadBodies: []
 };
 if (await fileStat(NEXT_STATE_PATH)) {
@@ -144,6 +145,7 @@ app.route("POST", "/api/finish", async (match, req, res, url) => {
         res.statusCode = 500;
         res.end("Was replay");
         inGame = false;
+        console.log("was replay, reset");
         return;
     }
 
@@ -152,7 +154,7 @@ app.route("POST", "/api/finish", async (match, req, res, url) => {
 
     if (replay.crsid.id === "ceht2") {
         res.statusCode = 500;
-        res.end("Master card bruh");
+        res.end("Master card");
         inGame = false;
         return;
     }
@@ -276,7 +278,7 @@ function playerCount() {
 }
 
 app.route("GET", "/api/start", async (match, req, res, url) => {
-    if (inGame || !url.searchParams.has("id")) {
+    if (inGame || !url.searchParams.has("id") || !url.searchParams.has("class")) {
         res.statusCode = 500;
         res.end("Already in game.");
         return;
@@ -287,13 +289,48 @@ app.route("GET", "/api/start", async (match, req, res, url) => {
     const id = url.searchParams.get("id")!.toLowerCase();
 
     if (id in crsidMap) {
-        broadcast(JSON.parse(await fs.readFile(path.join(PATH, "replays", crsidMap[id].replay), { encoding: "utf-8" })));
+        if (!broadcast(JSON.parse(await fs.readFile(path.join(PATH, "replays", crsidMap[id].replay), { encoding: "utf-8" })))) {
+            inGame = false;
+            res.statusCode = 200;
+            res.end("No clients");
+        }
         res.statusCode = 200;
         res.end("Done!");
         return;
     }
 
-    const bindDN = `ou=people,o=University of Cambridge,dc=cam,dc=ac,dc=uk`;
+    const classname: "Herbalist" | "Warrior" | "Wizard" | "Jacket" = DuckClasses[parseInt(url.searchParams.get("class")!)];
+
+    let body: DuckBody = "mage";
+    switch (classname) {
+    case "Herbalist": body = "herbalist"; break;
+    case "Warrior": body = "warrior"; break;
+    case "Wizard": body = "mage"; break;
+    case "Jacket": body = "jacket"; break;
+    }
+
+    const hat: DuckHat = DuckHat[Math.floor(Math.random() * DuckHat.length)];
+
+    const crsid: CRSID = {
+        name: `${id}`,
+        college: `Sunway`,
+        body,
+        classname,
+        hat,
+        id
+    };
+
+    nextState.crsid = crsid;
+    if (!broadcast(nextState)) {
+        inGame = false;
+        res.statusCode = 200;
+        res.end("No clients");
+    }
+
+    res.statusCode = 200;
+    res.end("Done!");
+
+    /*const bindDN = `ou=people,o=University of Cambridge,dc=cam,dc=ac,dc=uk`;
     const searchDN = 'ou=people,o=University of Cambridge,dc=cam,dc=ac,dc=uk';
 
     const client = new Client({
@@ -366,7 +403,7 @@ app.route("GET", "/api/start", async (match, req, res, url) => {
         console.error(ex);
     } finally {
         await client.unbind();
-    }
+    }*/
 });
 
 app.route("GET", "/api/name", async (match, req, res, url) => {

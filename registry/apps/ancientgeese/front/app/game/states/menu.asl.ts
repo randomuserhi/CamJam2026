@@ -38,6 +38,9 @@ export class Menu {
         this.ws.addEventListener("error", e => {
             setTimeout(() => this.connect(), 500);
         });
+        __ASL.onAbort(() => {
+            this.ws.close();
+        });
     }
 
     public enter() {
