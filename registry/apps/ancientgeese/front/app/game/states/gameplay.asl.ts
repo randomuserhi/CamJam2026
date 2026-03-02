@@ -933,7 +933,7 @@ export class GameplayPlay extends GameplayState {
             if (this.explodeTimer <= 0) {
                 const e = new ParticleEffect(sprites.effects.explosion);
                 e.position.x = (Math.random() * 2 - 1) * 50 + this.boss.position.x;
-                e.position.y = (Math.random() * 2 - 1) * 50 + this.boss.position.y + offsetY;
+                e.position.y = (Math.random() * 2 - 1) * 50 + this.boss.position.y + 55;
                 e.scale = Math.random() * 2;
                 this.explodeTimer = 0.01;
             }
@@ -1027,7 +1027,7 @@ export class GameplayPlay extends GameplayState {
         if (this.state === "Fight") {
             const t = Math.clamp01(this.timeInFight / 1);
 
-            let timeLeft = 60 - this.timeInFight;
+            let timeLeft = 6000 - this.timeInFight;
             if (timeLeft < 0) timeLeft = 0;
             ctx.font = `25px INET`;
             ctx.fillStyle = `rgba(255, 255, 255, ${t})`;

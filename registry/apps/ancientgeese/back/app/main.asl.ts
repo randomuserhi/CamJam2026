@@ -85,7 +85,7 @@ let nextState: GameState = {
     runId: 0,
     crsid: undefined!,
     rngSeed: 10,
-    bossHealth: 1,
+    bossHealth: 500,
     deadBodies: []
 };
 if (await fileStat(NEXT_STATE_PATH)) {
