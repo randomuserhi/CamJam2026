@@ -27,7 +27,7 @@ export class Menu {
 
         ws.addEventListener("message", e => {
             this.exit(JSON.parse(e.data));
-        }, { signal: __ASL.signal })
+        }, { signal: __ASL.signal });
     }
 
     public enter() {
@@ -96,7 +96,7 @@ export class Menu {
             drawText(ctx, "Ancient Geese", 0, 0);*/
 
             // Animated duck
-            let idx = Math.floor((time * 2) % 4);
+            const idx = Math.floor((time * 2) % 4);
             const y = (1 - this.duckEnterCurve(t)) * 300 - 70 - 15;
             drawDuck(ctx, sprites.duck, time, idx, 0, y, 2);
             if (this.body !== "none") drawDuck(ctx, sprites.body[this.body], time, idx, 0, y, 2);
@@ -110,7 +110,7 @@ export class Menu {
             drawImage(ctx, sprites.menu.title, 0, 50, titleScale, titleScale);
 
             // Animated duck
-            let idx = Math.floor((time * 2) % 4);
+            const idx = Math.floor((time * 2) % 4);
             this.y = -70 - Math.sin(this.timer + Math.PI / 2) * 15;
             drawDuck(ctx, sprites.duck, time, idx, 0, this.y, 2);
             if (this.body !== "none") drawDuck(ctx, sprites.body[this.body], time, idx, 0, this.y, 2);
@@ -132,7 +132,7 @@ export class Menu {
             }
 
             // Draw duck
-            let idx = Math.floor((time * 2) % 4);
+            const idx = Math.floor((time * 2) % 4);
             drawDuck(ctx, sprites.duck, time, idx, 0, y, 2);
             if (this.body !== "none") drawDuck(ctx, sprites.body[this.body], time, idx, 0, y, 2);
             if (this.hat !== "none") drawDuck(ctx, sprites.hat[this.hat], time, idx, 0, y, 2);

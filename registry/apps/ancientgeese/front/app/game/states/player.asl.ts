@@ -129,10 +129,10 @@ export class Player {
             this.idx = Math.floor(this.dodgeIdx + 4 * _t) % 4;
 
             if (_t < 0.5) {
-                let t = _t / 0.5;
+                const t = _t / 0.5;
                 this.offset = BASE_OFFSET + 15 * this.dodgeCurve(t);
             } else {
-                let t = 1 - ((_t - 0.5) / 0.5);
+                const t = 1 - ((_t - 0.5) / 0.5);
                 this.offset = BASE_OFFSET + 15 * this.dodgeCurve(t);
             }
         }
@@ -211,60 +211,60 @@ export class Player {
         }
 
         switch (crsid.classname) {
-            case "Herbalist": {
-                Vec2.copy(this.shootDir, this.projdir);
-                this.spawnProjectile(this.projdir, crsid, projectiles, rand);
+        case "Herbalist": {
+            Vec2.copy(this.shootDir, this.projdir);
+            this.spawnProjectile(this.projdir, crsid, projectiles, rand);
 
-                this.projTimer = this.projCooldown * 0.5;
+            this.projTimer = this.projCooldown * 0.5;
 
-                if (!(window as any).game.inReplayMode) {
-                    const audio = new Audio("/ancientgeese/assets/audio/leaf.wav");
-                    audio.play();
-                }
-            } break;
-            case "Jacket": {
-                Vec2.copy(this.shootDir, this.projdir);
-                const proj = this.spawnProjectile(this.projdir, crsid, projectiles, rand);
-                proj.speed = 300;
+            if (!(window as any).game.inReplayMode) {
+                const audio = new Audio("/ancientgeese/assets/audio/leaf.wav");
+                audio.play();
+            }
+        } break;
+        case "Jacket": {
+            Vec2.copy(this.shootDir, this.projdir);
+            const proj = this.spawnProjectile(this.projdir, crsid, projectiles, rand);
+            proj.speed = 300;
 
-                this.projTimer = this.projCooldown * 0.5;
+            this.projTimer = this.projCooldown * 0.5;
 
-                if (!(window as any).game.inReplayMode) {
-                    const audio = new Audio("/ancientgeese/assets/audio/leaf.wav");
-                    audio.play();
-                }
-            } break;
-            case "Warrior": {
-                const lifetime = 0.4;
+            if (!(window as any).game.inReplayMode) {
+                const audio = new Audio("/ancientgeese/assets/audio/leaf.wav");
+                audio.play();
+            }
+        } break;
+        case "Warrior": {
+            const lifetime = 0.4;
 
-                Vec2.copy(this.shootDir, this.projdir);
-                this.spawnProjectile(this.projdir, crsid, projectiles, rand, lifetime);
+            Vec2.copy(this.shootDir, this.projdir);
+            this.spawnProjectile(this.projdir, crsid, projectiles, rand, lifetime);
 
-                Vec2.copy(this.shootDir, this.projdir);
-                this.spawnProjectile(Vec2.rotate(this.projdir, Math.PI / 13, this.projdir), crsid, projectiles, rand, lifetime);
+            Vec2.copy(this.shootDir, this.projdir);
+            this.spawnProjectile(Vec2.rotate(this.projdir, Math.PI / 13, this.projdir), crsid, projectiles, rand, lifetime);
 
-                Vec2.copy(this.shootDir, this.projdir);
-                this.spawnProjectile(Vec2.rotate(this.projdir, -Math.PI / 13, this.projdir), crsid, projectiles, rand, lifetime);
+            Vec2.copy(this.shootDir, this.projdir);
+            this.spawnProjectile(Vec2.rotate(this.projdir, -Math.PI / 13, this.projdir), crsid, projectiles, rand, lifetime);
 
-                this.projTimer = this.projCooldown;
+            this.projTimer = this.projCooldown;
 
-                if (!(window as any).game.inReplayMode) {
-                    const audio = new Audio("/ancientgeese/assets/audio/dagger.wav");
-                    audio.play();
-                }
-            } break;
-            case "Wizard": {
-                Vec2.copy(this.shootDir, this.projdir);
-                const p = this.spawnProjectile(this.projdir, crsid, projectiles, rand);
-                Vec2.set(20, 20, p.collider.size);
+            if (!(window as any).game.inReplayMode) {
+                const audio = new Audio("/ancientgeese/assets/audio/dagger.wav");
+                audio.play();
+            }
+        } break;
+        case "Wizard": {
+            Vec2.copy(this.shootDir, this.projdir);
+            const p = this.spawnProjectile(this.projdir, crsid, projectiles, rand);
+            Vec2.set(20, 20, p.collider.size);
 
-                this.projTimer = this.projCooldown * 2;
+            this.projTimer = this.projCooldown * 2;
 
-                if (!(window as any).game.inReplayMode) {
-                    const audio = new Audio("/ancientgeese/assets/audio/fire.wav");
-                    audio.play();
-                }
-            } break;
+            if (!(window as any).game.inReplayMode) {
+                const audio = new Audio("/ancientgeese/assets/audio/fire.wav");
+                audio.play();
+            }
+        } break;
         }
     }
 
@@ -272,28 +272,28 @@ export class Player {
         let projectile: Projectile;
 
         switch (crsid.classname) {
-            case "Herbalist": {
-                const p = new HerbalistProjectile();
-                p.scale = rand() * 2 - 1;
-                projectile = p;
-                projectile.damage = 0.5;
-            } break;
-            case "Warrior": {
-                projectile = new Projectile();
-                projectile.damage = 2;
-            } break;
-            case "Wizard": {
-                const p = new WizardProjectile();
-                p.maxSpeed = 500;
-                p.rampDuration = 1;
-                projectile = p;
-                projectile.damage = 3;
-            } break;
-            case "Jacket": {
-                const p = new Projectile();
-                projectile = p;
-                projectile.damage = 2.5;
-            } break;
+        case "Herbalist": {
+            const p = new HerbalistProjectile();
+            p.scale = rand() * 2 - 1;
+            projectile = p;
+            projectile.damage = 0.5;
+        } break;
+        case "Warrior": {
+            projectile = new Projectile();
+            projectile.damage = 2;
+        } break;
+        case "Wizard": {
+            const p = new WizardProjectile();
+            p.maxSpeed = 500;
+            p.rampDuration = 1;
+            projectile = p;
+            projectile.damage = 3;
+        } break;
+        case "Jacket": {
+            const p = new Projectile();
+            projectile = p;
+            projectile.damage = 2.5;
+        } break;
         }
 
         Vec2.copy(this.position, projectile.position);
@@ -321,7 +321,7 @@ export class Player {
 
         if (!(window as any).game.inReplayMode) {
             const audio = new Audio("/ancientgeese/assets/audio/quack.wav");
-            audio.play()
+            audio.play();
         }
     }
 

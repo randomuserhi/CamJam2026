@@ -13,7 +13,7 @@ import { Camera, Renderer } from "../renderer.asl";
 import { sprites } from "../sprites.asl";
 import { Boss } from "./boss.asl";
 import { ParticleEffect, tickAllEffects } from "./effect.asl";
-import { BASE_OFFSET as PLAYER_OFFSET, Player, PLAYER_SCALE } from "./player.asl";
+import { Player, BASE_OFFSET as PLAYER_OFFSET, PLAYER_SCALE } from "./player.asl";
 import { EnemyProjectile, Projectile } from "./projectile.asl";
 import { GameState } from "./savestate.asl";
 import { createStat as blankStats, Stats } from "./stats.asl";
@@ -40,7 +40,7 @@ class GameplayState {
 
 class GameplayEnter extends GameplayState {
     constructor(gameplay: Gameplay, renderer: Renderer) {
-        super(gameplay, renderer)
+        super(gameplay, renderer);
     }
 
     private state: "Enter" | "Welcome" | "ClassReveal" | "Exit" = "Enter";
@@ -93,8 +93,8 @@ class GameplayEnter extends GameplayState {
         this.timer += dt;
         this.bobTimer += dt;
 
-        let bobY = -Math.sin(this.bobTimer + Math.PI / 2) * 15;
-        let bobIdx = Math.floor((time * 2) % 4);
+        const bobY = -Math.sin(this.bobTimer + Math.PI / 2) * 15;
+        const bobIdx = Math.floor((time * 2) % 4);
         if (this.state === "Welcome" || this.state === "ClassReveal") {
             drawDuck(ctx, sprites.duck, time, bobIdx, 0, bobY, 2);
         }
@@ -103,7 +103,7 @@ class GameplayEnter extends GameplayState {
             const t = Math.clamp01(this.timer / this.enterDuration);
 
             // Animated duck
-            let idx = Math.floor((time * 2) % 4);
+            const idx = Math.floor((time * 2) % 4);
             const y = (1 - this.duckEnterCurve(t)) * 300 - 15;
             drawDuck(ctx, sprites.duck, time, idx, 0, y, 2);
 
@@ -170,7 +170,7 @@ class GameplayEnter extends GameplayState {
             drawText(ctx, `petrification curse sets you into to stone!`, 0, -125);
 
             // Animated duck
-            let idx = Math.floor((time * 2) % 4);
+            const idx = Math.floor((time * 2) % 4);
             const y = - this.duckExitCurve(t) * 300;
             drawDuck(ctx, sprites.duck, time, idx, 0, y, 2);
             if (crsid.body !== "none") drawDuck(ctx, sprites.body[crsid.body], time, idx, 0, y, 2);
@@ -414,18 +414,18 @@ export class GameplayPlay extends GameplayState {
 
                     let e: ParticleEffect | undefined = undefined;
                     switch (this.gameState.crsid.classname) {
-                        case "Herbalist":
-                            e = new ParticleEffect(sprites.effects.leaf);
-                            break;
-                        case "Warrior":
-                            e = new ParticleEffect(sprites.effects.slash);
-                            break;
-                        case "Wizard":
-                            e = new ParticleEffect(sprites.effects.explosion);
-                            break;
-                        case "Jacket":
-                            e = new ParticleEffect(sprites.effects.leaf);
-                            break;
+                    case "Herbalist":
+                        e = new ParticleEffect(sprites.effects.leaf);
+                        break;
+                    case "Warrior":
+                        e = new ParticleEffect(sprites.effects.slash);
+                        break;
+                    case "Wizard":
+                        e = new ParticleEffect(sprites.effects.explosion);
+                        break;
+                    case "Jacket":
+                        e = new ParticleEffect(sprites.effects.leaf);
+                        break;
                     }
                     if (e) {
                         Vec2.copy(p.position, e.position);
@@ -575,7 +575,7 @@ export class GameplayPlay extends GameplayState {
 
         // Borders
         {
-            let upperBound = camera.size.y * 2 + camera.size.y / 2 - 80;
+            const upperBound = camera.size.y * 2 + camera.size.y / 2 - 80;
             let lowerBound = -camera.size.y / 2 + 10;
             if (screenIdx === 2) {
                 lowerBound = camera.size.y * 2 - camera.size.y / 2 + 10;
@@ -726,85 +726,6 @@ export class GameplayPlay extends GameplayState {
             ++deadBodyIdx;
         }
 
-        // Debugging
-        if (false) {
-            this.player.collider.draw(ctx);
-            this.player.hurtbox.draw(ctx, "rgb(255, 0, 0)");
-
-            this.boss.collider.draw(ctx);
-            this.boss.hurtbox.draw(ctx, "rgb(255, 0, 0)");
-            this.boss.damagebox.draw(ctx, "rgb(255, 0, 0)");
-
-            {
-                ctx.beginPath();
-                ctx.moveTo(-camera.size.x / 2, this.boss.lowerBoundY);
-                ctx.lineTo(camera.size.x / 2, this.boss.lowerBoundY);
-                ctx.strokeStyle = "rgb(0, 255, 0)";
-                ctx.stroke();
-
-                ctx.beginPath();
-                ctx.moveTo(-camera.size.x / 2, this.boss.upperBoundY);
-                ctx.lineTo(camera.size.x / 2, this.boss.upperBoundY);
-                ctx.strokeStyle = "rgb(0, 255, 0)";
-                ctx.stroke();
-
-                ctx.beginPath();
-                ctx.moveTo(this.boss.lowerBoundX, camera.size.y * 2 + -camera.size.y / 2);
-                ctx.lineTo(this.boss.lowerBoundX, camera.size.y * 2 + camera.size.y / 2);
-                ctx.strokeStyle = "rgb(0, 255, 0)";
-                ctx.stroke();
-
-                ctx.beginPath();
-                ctx.moveTo(this.boss.upperBoundX, camera.size.y * 2 + -camera.size.x / 2);
-                ctx.lineTo(this.boss.upperBoundX, camera.size.y * 2 + camera.size.x / 2);
-                ctx.strokeStyle = "rgb(0, 255, 0)";
-                ctx.stroke();
-
-                ctx.beginPath();
-                ctx.arc(this.boss.destination.x, this.boss.destination.y, 10, 0, Math.PI * 2);
-                ctx.strokeStyle = "rgb(0, 255, 0)";
-                ctx.stroke();
-            }
-
-            // Bridge gap
-            {
-                ctx.beginPath();
-                ctx.moveTo(-camera.size.x / 2, this.gapUpperBound);
-                ctx.lineTo(camera.size.x / 2, this.gapUpperBound);
-                ctx.strokeStyle = "rgb(0, 255, 0)";
-                ctx.stroke();
-
-                ctx.beginPath();
-                ctx.moveTo(-camera.size.x / 2, this.gapLowerBound);
-                ctx.lineTo(camera.size.x / 2, this.gapLowerBound);
-                ctx.strokeStyle = "rgb(0, 255, 0)";
-                ctx.stroke();
-
-                for (const collider of this.gapPlatforms) {
-                    collider.draw(ctx);
-                }
-
-                for (const collider of this.obstructions) {
-                    collider.draw(ctx);
-                }
-            }
-
-            // projectiles
-            {
-                for (const p of this.playerProjectiles.buffer) {
-                    p.collider.draw(ctx);
-                }
-
-                for (const p of this.enemyProjectiles.buffer) {
-                    p.collider.draw(ctx);
-                }
-
-                for (const p of this.deadBodyObstructions.buffer) {
-                    p.collider.draw(ctx);
-                    p.hurtbox.draw(ctx, "rgb(255, 0, 0)");
-                }
-            }
-        }
 
         if (this.state === "Enter") {
             const t = Math.clamp01(this.timer / this.enterDuration);
@@ -843,10 +764,10 @@ export class GameplayPlay extends GameplayState {
                 ctx.fillRect(camera.position.x - hx, camera.position.y - hy, w, h);
             }
 
-            let scale = PLAYER_SCALE;
-            let idx = this.player.idx;
-            let isIdle = true;
-            let offset = this.player.offset;
+            const scale = PLAYER_SCALE;
+            const idx = this.player.idx;
+            const isIdle = true;
+            const offset = this.player.offset;
 
             drawDuck(ctx, sprites.duck, 0, idx, this.player.position.x, this.player.position.y + offset, scale, isIdle);
             if (crsid.body !== "none") drawDuck(ctx, sprites.body[crsid.body], 0, idx, this.player.position.x, this.player.position.y + offset, scale, isIdle);
@@ -874,10 +795,10 @@ export class GameplayPlay extends GameplayState {
                 ctx.fillRect(camera.position.x - hx, camera.position.y - hy, w, h);
             }
 
-            let scale = PLAYER_SCALE;
-            let idx = this.player.idx;
-            let isIdle = true;
-            let offset = this.player.offset;
+            const scale = PLAYER_SCALE;
+            const idx = this.player.idx;
+            const isIdle = true;
+            const offset = this.player.offset;
 
             drawDuck(ctx, sprites.statue, Math.clamp(this.timer, 0, this.freezeDuration - 0.01), idx, this.player.position.x, this.player.position.y + offset, scale, isIdle);
             if (crsid.body !== "none") drawDuck(ctx, sprites.body[crsid.body], 0, idx, this.player.position.x, this.player.position.y + offset, scale, isIdle);
@@ -900,10 +821,10 @@ export class GameplayPlay extends GameplayState {
                 ctx.fillRect(camera.position.x - hx, camera.position.y - hy, w, h);
             }
 
-            let scale = PLAYER_SCALE;
-            let idx = this.player.idx;
-            let isIdle = false;
-            let offset = this.player.offset;
+            const scale = PLAYER_SCALE;
+            const idx = this.player.idx;
+            const isIdle = false;
+            const offset = this.player.offset;
 
             ctx.globalAlpha = 1 - t;
             drawDuck(ctx, sprites.statue, 0, idx, this.player.position.x, this.player.position.y + offset, scale, isIdle);
@@ -1017,9 +938,9 @@ export class GameplayPlay extends GameplayState {
         const canvas = this.renderer.canvas;
         const camera = this.gameplay.camera;
 
-        ctx.save()
+        ctx.save();
         ctx.translate(canvas.width / 2, canvas.height / 2);
-        ctx.scale(this.gameplay.camera.scaleFactor, -this.gameplay.camera.scaleFactor)
+        ctx.scale(this.gameplay.camera.scaleFactor, -this.gameplay.camera.scaleFactor);
         drawImage(ctx, sprites.ui.shoottip, -camera.size.x / 2 + 40, -camera.size.y / 2 + 20, 1, 1);
         drawImage(ctx, sprites.ui.jumptip, -camera.size.x / 2 + 40, -camera.size.y / 2 + 40, 1, 1);
         ctx.restore();
@@ -1027,19 +948,19 @@ export class GameplayPlay extends GameplayState {
         if (this.state === "Fight") {
             const t = Math.clamp01(this.timeInFight / 1);
 
-            let timeLeft = 6000 - this.timeInFight;
+            let timeLeft = 60 - this.timeInFight;
             if (timeLeft < 0) timeLeft = 0;
             ctx.font = `25px INET`;
             ctx.fillStyle = `rgba(255, 255, 255, ${t})`;
 
-            ctx.save()
+            ctx.save();
             ctx.translate(canvas.width / 2, canvas.height / 2);
-            ctx.scale(this.gameplay.camera.scaleFactor, -this.gameplay.camera.scaleFactor)
+            ctx.scale(this.gameplay.camera.scaleFactor, -this.gameplay.camera.scaleFactor);
             drawText(ctx, `${timeLeft.toFixed(2)}`, 240, 150);
             ctx.restore();
 
             const scale = 3;
-            ctx.save()
+            ctx.save();
             ctx.translate(canvas.width / 2, canvas.height / 2);
             ctx.scale(camera.scaleFactor, -camera.scaleFactor);
 
@@ -1195,7 +1116,7 @@ export class GameplayPlay extends GameplayState {
 // TODO
 class GameplayExit extends GameplayState {
     constructor(gameplay: Gameplay, renderer: Renderer) {
-        super(gameplay, renderer)
+        super(gameplay, renderer);
     }
 
     private state: "Enter" | "Welcome" | "ClassReveal" | "Exit" = "Enter";
@@ -1209,7 +1130,7 @@ class GameplayExit extends GameplayState {
     public enter(gameState: GameState, stat: Stats) {
         this.stat = stat;
         this.gameplay.game.mode = "Gameplay";
-        this.gameplay.state = "Exit"
+        this.gameplay.state = "Exit";
         this.gameplay.gameState = gameState;
         this.gameState = gameState;
         this.crsid = this.gameplay.gameState.crsid;
@@ -1256,8 +1177,8 @@ class GameplayExit extends GameplayState {
         this.timer += dt;
         this.bobTimer += dt;
 
-        let bobY = -Math.sin(this.bobTimer + Math.PI / 2) * 15;
-        let bobIdx = Math.floor((time * 2) % 4);
+        const bobY = -Math.sin(this.bobTimer + Math.PI / 2) * 15;
+        const bobIdx = Math.floor((time * 2) % 4);
         if (this.state === "Welcome" || this.state === "ClassReveal") {
             drawDuck(ctx, sprites.duck, time, bobIdx, 0, bobY, 2);
             if (this.crsid.body !== "none") drawDuck(ctx, sprites.body[this.crsid.body], time, bobIdx, 0, bobY, 2);
@@ -1268,7 +1189,7 @@ class GameplayExit extends GameplayState {
             const t = Math.clamp01(this.timer / this.enterDuration);
 
             // Animated duck
-            let idx = Math.floor((time * 2) % 4);
+            const idx = Math.floor((time * 2) % 4);
             const y = (1 - this.duckEnterCurve(t)) * 300 - 15;
             drawDuck(ctx, sprites.duck, time, idx, 0, y, 2);
             if (this.crsid.body !== "none") drawDuck(ctx, sprites.body[this.crsid.body], time, idx, 0, y, 2);
@@ -1324,7 +1245,7 @@ class GameplayExit extends GameplayState {
             drawText(ctx, desc2, 0, -95);
 
             // Animated duck
-            let idx = Math.floor((time * 2) % 4);
+            const idx = Math.floor((time * 2) % 4);
             const y = - this.duckExitCurve(t) * 300;
             drawDuck(ctx, sprites.duck, time, idx, 0, y, 2);
             if (this.crsid.body !== "none") drawDuck(ctx, sprites.body[this.crsid.body], time, idx, 0, y, 2);
@@ -1363,15 +1284,15 @@ export class Gameplay {
 
     public tick(dt: number) {
         switch (this.state) {
-            case "Enter":
-                this.gameplayEnter.tick(dt);
-                break;
-            case "Play":
-                this.gameplayPlay.tick(dt);
-                break;
-            case "Exit":
-                this.gameplayExit.tick(dt);
-                break;
+        case "Enter":
+            this.gameplayEnter.tick(dt);
+            break;
+        case "Play":
+            this.gameplayPlay.tick(dt);
+            break;
+        case "Exit":
+            this.gameplayExit.tick(dt);
+            break;
         }
     }
 
@@ -1387,15 +1308,15 @@ export class Gameplay {
         ctx.clearRect(this.camera.position.x - hx, this.camera.position.y - hy, w, h);
 
         switch (this.state) {
-            case "Enter":
-                this.gameplayEnter.draw(time, dt);
-                break;
-            case "Play":
-                this.gameplayPlay.draw(time, dt);
-                break;
-            case "Exit":
-                this.gameplayExit.draw(time, dt);
-                break;
+        case "Enter":
+            this.gameplayEnter.draw(time, dt);
+            break;
+        case "Play":
+            this.gameplayPlay.draw(time, dt);
+            break;
+        case "Exit":
+            this.gameplayExit.draw(time, dt);
+            break;
         }
 
         this.camera.end();
@@ -1403,9 +1324,9 @@ export class Gameplay {
         tickAllEffects(this.camera, ctx, dt);
 
         switch (this.state) {
-            case "Play":
-                this.gameplayPlay.uiDraw();
-                break;
+        case "Play":
+            this.gameplayPlay.uiDraw();
+            break;
         }
     }
 }

@@ -1,9 +1,9 @@
+import { fileStat } from "common/lib/file.asl";
+import fs from "fs/promises";
+import path from "path";
 import { app } from "rapid";
 import { front } from "rapid/async-path";
 import { WebSocketServer } from "ws";
-import path from "path";
-import fs from "fs/promises";
-import { fileStat } from "common/lib/file.asl";
 
 const webSocketServer: WebSocketServer = new WebSocketServer({ noServer: true });
 __ASL.onAbort(() => {
@@ -85,16 +85,16 @@ let nextState: GameState = {
     runId: 0,
     crsid: undefined!,
     rngSeed: 10,
-    bossHealth: 500,
+    bossHealth: 5000,
     deadBodies: []
 };
 if (await fileStat(NEXT_STATE_PATH)) {
-    nextState = JSON.parse(await fs.readFile(NEXT_STATE_PATH, { encoding: "utf-8" }))
+    nextState = JSON.parse(await fs.readFile(NEXT_STATE_PATH, { encoding: "utf-8" }));
 }
 
 let crsidMap: { [k: string]: { replay: string, stats: Stats } } = {};
 if (await fileStat(CRSID_MAP_PATH)) {
-    crsidMap = JSON.parse(await fs.readFile(CRSID_MAP_PATH, { encoding: "utf-8" }))
+    crsidMap = JSON.parse(await fs.readFile(CRSID_MAP_PATH, { encoding: "utf-8" }));
 }
 
 let inGame = false;
@@ -276,7 +276,7 @@ function playerCount() {
 }
 
 app.route("GET", "/api/start", async (match, req, res, url) => {
-    if (inGame || !url.searchParams.has("id")) {
+    if (inGame || !url.searchParams.has("id") || !url.searchParams.has("class")) {
         res.statusCode = 500;
         res.end("Already in game.");
         return;
@@ -293,7 +293,34 @@ app.route("GET", "/api/start", async (match, req, res, url) => {
         return;
     }
 
-    const bindDN = `ou=people,o=University of Cambridge,dc=cam,dc=ac,dc=uk`;
+    const classname: "Herbalist" | "Warrior" | "Wizard" | "Jacket" = DuckClasses[parseInt(url.searchParams.get("class")!)];
+
+    let body: DuckBody = "mage";
+    switch (classname) {
+    case "Herbalist": body = "herbalist"; break;
+    case "Warrior": body = "warrior"; break;
+    case "Wizard": body = "mage"; break;
+    case "Jacket": body = "jacket"; break;
+    }
+
+    const hat: DuckHat = DuckHat[Math.floor(Math.random() * DuckHat.length)];
+
+    const crsid: CRSID = {
+        name: `${id}`,
+        college: `Sunway`,
+        body,
+        classname,
+        hat,
+        id
+    };
+
+    nextState.crsid = crsid;
+    broadcast(nextState);
+
+    res.statusCode = 200;
+    res.end("Done!");
+
+    /*const bindDN = `ou=people,o=University of Cambridge,dc=cam,dc=ac,dc=uk`;
     const searchDN = 'ou=people,o=University of Cambridge,dc=cam,dc=ac,dc=uk';
 
     const client = new Client({
@@ -314,7 +341,7 @@ app.route("GET", "/api/start", async (match, req, res, url) => {
         let hat: DuckHat = "none";
         let college: string = "UNKNOWN";
 
-        let ou = typeof result.ou === "string" ? [result.ou] : result.ou;
+        const ou = typeof result.ou === "string" ? [result.ou] : result.ou;
         for (let i = 0; i < hatTerms.length; ++i) {
             const includes = hatTerms[i];
             for (const term of ou) {
@@ -340,10 +367,10 @@ app.route("GET", "/api/start", async (match, req, res, url) => {
 
         let body: DuckBody = "mage";
         switch (classname) {
-            case "Herbalist": body = "herbalist"; break;
-            case "Warrior": body = "warrior"; break;
-            case "Wizard": body = "mage"; break;
-            case "Jacket": body = "jacket"; break;
+        case "Herbalist": body = "herbalist"; break;
+        case "Warrior": body = "warrior"; break;
+        case "Wizard": body = "mage"; break;
+        case "Jacket": body = "jacket"; break;
         }
 
         const crsid: CRSID = {
@@ -353,7 +380,7 @@ app.route("GET", "/api/start", async (match, req, res, url) => {
             classname,
             hat,
             id
-        }
+        };
 
         nextState.crsid = crsid;
         broadcast(nextState);
@@ -366,7 +393,7 @@ app.route("GET", "/api/start", async (match, req, res, url) => {
         console.error(ex);
     } finally {
         await client.unbind();
-    }
+    }*/
 });
 
 app.route("GET", "/api/name", async (match, req, res, url) => {

@@ -30,11 +30,11 @@ interface App {
 const resp = await fetch("/ancientgeese/api/leaderboard");
 const data = await resp.json();
 const entries = Object.entries(data).sort((a, b) => (b[1] as any).stats.damageDealt - (a[1] as any).stats.damageDealt);
-for (let i = 0; i < entries.length; ++i) {
+/*for (let i = 0; i < entries.length; ++i) {
     const resp = await fetch(`/ancientgeese/api/name?id=${entries[i][0]}`);
     const data = await resp.text();
     (entries[i][1] as any).stats.name = data;
-}
+}*/
 console.log(entries);
 
 const App = html.wc(() => {
@@ -54,7 +54,7 @@ const App = html.wc(() => {
         const row = Row(start ? sprites.top : i % 2 == 0 ? sprites.middle2 : sprites.middle1);
         for (let j = 0; i < entries.length && j < 6; ++i, ++j) {
             const e = entries[i];
-            row.names[j].innerText = (e[1] as any).stats.name;
+            row.names[j].innerText = e[0]; //(e[1] as any).stats.name;
             row.dmg[j].innerText = (e[1] as any).stats.damageDealt;
         }
 
