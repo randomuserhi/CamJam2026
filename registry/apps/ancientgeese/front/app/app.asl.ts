@@ -5,12 +5,17 @@ import { GameComp } from "./game/comp.asl";
 // Load math extensions statically
 await __ASL.require("./game/math/ext.asl");
 
+let bgm: HTMLAudioElement | undefined = undefined;
 window.addEventListener("click", () => {
     if ((window as any).game.inReplayMode) return;
-    const audio = new Audio("/ancientgeese/assets/audio/soundtrack2.mp3");
-    audio.loop = true;
-    audio.play();
+    bgm = new Audio("/ancientgeese/assets/audio/soundtrack2.mp3");
+    bgm.loop = true;
+    bgm.play();
 }, { once: true });
+
+__ASL.onAbort(() => {
+    if (bgm) bgm.pause();
+});
 
 const style = Style(({ css }) => {
     const wrapper = css.style`
